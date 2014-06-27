@@ -1,6 +1,6 @@
 package messages
 
 
-case class Add {
+case class Add() {
 
 }

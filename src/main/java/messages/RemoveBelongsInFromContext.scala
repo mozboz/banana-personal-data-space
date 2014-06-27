@@ -1,5 +1,5 @@
 package messages
 
-case class RemoveBelongsInFromContext {
+case class RemoveBelongsInFromContext() {
 
 }

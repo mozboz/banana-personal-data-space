@@ -1,5 +1,5 @@
 package messages
 
-case class AddBelongsInToContext {
+case class AddBelongsInToContext() {
 
 }

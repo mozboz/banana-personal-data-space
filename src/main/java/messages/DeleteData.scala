@@ -1,5 +1,5 @@
 package messages
 
-case class DeleteData {
+case class DeleteData() {
 
 }

@@ -1,5 +1,5 @@
 package messages
 
-case class PutData {
+case class PutData() {
 
 }

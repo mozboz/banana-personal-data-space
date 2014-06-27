@@ -1,5 +1,5 @@
 package messages
 
-case class RemoveHasFromContext {
+case class RemoveHasFromContext() {
 
 }

@@ -1,5 +1,5 @@
 package messages
 
-case class CreateContext {
+case class CreateContext() {
 
 }

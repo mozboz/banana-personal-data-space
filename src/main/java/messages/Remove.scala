@@ -1,5 +1,5 @@
 package messages
 
-case class Remove {
+case class Remove() {
 
 }
