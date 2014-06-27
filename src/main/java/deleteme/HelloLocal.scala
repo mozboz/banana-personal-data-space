@@ -1,14 +1,6 @@
+package deleteme
+
 import akka.actor._
-import local.{HIGHER, LOWER, GuessResult, Guessable}
-import util.Random
-
-object Local extends App {
-
-  implicit val system = ActorSystem("LocalSystem")
-  val localActor = system.actorOf(Props[LocalActor], name = "LocalActor")  // the local actor
-  localActor ! "START"                                                     // start the action
-
-}
 
 class LocalActor extends Actor {
 

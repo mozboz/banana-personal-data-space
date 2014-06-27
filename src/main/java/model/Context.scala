@@ -6,9 +6,6 @@
 //
 package model
 
-import java.util.ArrayList
-import java.util.List
-import javax.xml.bind.annotation._
 import collection.mutable
 
 /**
@@ -30,7 +27,7 @@ class Context(origin: String) {
       throw new Exception("Context data does not contain key " + name)
     }
 
-    data.get(name)
+    data(name)
   }
 
   def getAggregatedProfiles = aggregatedProfiles

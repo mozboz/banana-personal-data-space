@@ -11,6 +11,11 @@ import collection.mutable
 
 class ContextMetaData {
 
+  var aggregatedProfiles = new mutable.HashSet[String]()
+  var referencedContexts = new mutable.HashSet[String]()
+  var referencedByContexts = new mutable.HashSet[String]()
+  var data = new mutable.HashMap[String, String]()
+
   def setDataItem(name: String, value: String) {
     data.put(name, value)
   }
@@ -20,24 +25,13 @@ class ContextMetaData {
       throw new Exception("Context data does not contain key " + name)
     }
 
-    data.get(name)
+    data(name)
   }
 
-  def getAggregatedProfiles = {
-    aggregatedProfiles
-  }
+  def getAggregatedProfiles = aggregatedProfiles
 
-  def getReferencedContexts = {
-    referencedContexts
-  }
+  def getReferencedContexts = referencedContexts
 
-  def getReferencedByContexts = {
-    referencedByContexts
-  }
-
-  var aggregatedProfiles: mutable.HashSet[String]
-  var referencedContexts: mutable.HashSet[String]
-  var referencedByContexts: mutable.HashSet[String]
-  var data: mutable.HashMap[String, String]
+  def getReferencedByContexts = referencedByContexts
 
 }
