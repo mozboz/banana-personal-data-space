@@ -6,20 +6,10 @@
 //
 package model
 
-import java.util.ArrayList
-import java.util.List
 import javax.xml.bind.annotation._
 import collection.mutable
 
-/**
- *
- */
-class Context(origin: String) {
-
-  var aggregatedProfiles = new mutable.HashSet[String]()
-  var referencedContexts = new mutable.HashSet[String]()
-  var referencedByContexts = new mutable.HashSet[String]()
-  var data = new mutable.HashMap[String, String]()
+class ContextMetaData {
 
   def setDataItem(name: String, value: String) {
     data.put(name, value)
@@ -33,10 +23,21 @@ class Context(origin: String) {
     data.get(name)
   }
 
-  def getAggregatedProfiles = aggregatedProfiles
+  def getAggregatedProfiles = {
+    aggregatedProfiles
+  }
 
-  def getReferencedContexts = referencedContexts
+  def getReferencedContexts = {
+    referencedContexts
+  }
 
-  def getReferencedByContexts = referencedByContexts
+  def getReferencedByContexts = {
+    referencedByContexts
+  }
+
+  var aggregatedProfiles: mutable.HashSet[String]
+  var referencedContexts: mutable.HashSet[String]
+  var referencedByContexts: mutable.HashSet[String]
+  var data: mutable.HashMap[String, String]
 
 }
