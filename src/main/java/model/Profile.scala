@@ -14,7 +14,7 @@ import javax.xml.bind.annotation.XmlType
 import collection.mutable
 import collection.immutable.HashMap
 
-class Profile {
+class Profile(name: String) {
 
   /**
    * Get all contexts
