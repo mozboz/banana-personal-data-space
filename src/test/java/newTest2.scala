@@ -1,8 +1,8 @@
 import collection.mutable.Stack
-import local._
-import org.scalatest._
+import local.Guessable
+import org.scalatest.{Matchers, FlatSpec}
 
-class ExampleSpec extends FlatSpec with Matchers {
+class newTest2 extends FlatSpec with Matchers {
 
   trait Guesses {
     var lowGuess = new Guessable[Int](1)
@@ -12,7 +12,7 @@ class ExampleSpec extends FlatSpec with Matchers {
   }
 
   "a guessable int" should "compare correctly to other guessable ints" in new Guesses {
-      mediumGuess.compare(anotherMediumGuess) should be (local.EQUAL)
+    mediumGuess.compare(anotherMediumGuess) should be (local.EQUAL)
   }
 
   "A Stack" should "pop values in last-in-first-out order" in {

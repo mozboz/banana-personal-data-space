@@ -1,4 +1,5 @@
 import akka.actor._
+import local.{HIGHER, LOWER, GuessResult, Guessable}
 import util.Random
 
 object Local extends App {

@@ -1,3 +1,5 @@
+package local
+
 class Answer[T] (value: Guessable[T]) {
     var guesses = List[Guessable[T]]() // ordered list
     def makeGuess(guess: Guessable[T]): GuessResult = {
