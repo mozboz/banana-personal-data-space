@@ -1,5 +1,6 @@
 import collection.mutable.Stack
-import org.scalatest._
+import org.scalatest.{Matchers, FlatSpec}
+
 
 class newTest2 extends FlatSpec with Matchers {
 
@@ -13,10 +14,9 @@ class newTest2 extends FlatSpec with Matchers {
 
   it should "throw NoSuchElementException if an empty stack is popped" in {
     val emptyStack = new Stack[Int]
-    /*
+
     a [NoSuchElementException] should be thrownBy {
       emptyStack.pop()
     }
-    */
   }
 }

@@ -10,8 +10,6 @@ class MasterActor extends Actor {
   sealed abstract class Expression
   sealed abstract class Addable(key: String)
 
-
-
   case class X() extends Expression
   case class Context(key: String) extends Addable(key)
   case class Content(key: String, value: String) extends Addable(key)
