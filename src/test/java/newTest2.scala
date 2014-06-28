@@ -1,6 +1,5 @@
 import collection.mutable.Stack
-import org.scalatest.{Matchers, FlatSpec}
-
+import org.scalatest._
 
 class newTest2 extends FlatSpec with Matchers {
 
@@ -18,5 +17,6 @@ class newTest2 extends FlatSpec with Matchers {
     a [NoSuchElementException] should be thrownBy {
       emptyStack.pop()
     }
+
   }
 }
