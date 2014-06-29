@@ -9,7 +9,7 @@ package model
 import javax.xml.bind.annotation._
 import collection.mutable
 
-class ContextMetaData {
+class ImmutableContext {
 
   var aggregatedProfiles = new mutable.HashSet[String]()
   var referencedContexts = new mutable.HashSet[String]()
