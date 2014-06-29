@@ -32,11 +32,11 @@ trait Action
 trait Thing
 
 trait UrlAdressable {
-  def getUrl = None[String]
+  def getUrl = None
 }
 
 trait Identifyable {
-  def getIdentifier = None[String]
+  def getIdentifier = None
 }
 
 trait Store
