@@ -1,7 +1,9 @@
 package app
+
 import akka.actor.{Actor, ActorSystem, Props}
 
 trait Action
+trait Message
 trait Thing
 
 trait UrlAdressable {
@@ -11,6 +13,8 @@ trait UrlAdressable {
 trait Identifyable {
   def getId = ""
 }
+
+trait Sendable extends UrlAdressable
 
 trait Store
 
@@ -34,15 +38,17 @@ case class Item(id : String)
 }
 
 case class Add   (val item : Thing with Identifyable, val to   : Store)  extends Action
+// case class Added (val item : Thing with Identifyable, val to   : Store)  extends Message
+
 case class Update(val item : Thing with Identifyable, val in   : Store)  extends Action
 case class Remove(val item : Thing with Identifyable, val from : Store)  extends Action
 
 
 class EndpointActor extends Actor {
   def receive = {
-    case Add(item:Context,to:Profile) => throw new Exception("Let it crash (context->profile)");
-    case Add(item:Item,to:Context) => throw new Exception("Let it crash (item->context)");
-    case x => throw new Exception("Unknown message!");
+    case Add(item:Context,to:Profile) => throw new Exception("Let it crash: " + item.getId + "->" + to.getUrl);
+    case Add(item:Item,to:Context) => throw new Exception("Let it crash: " + item.getId + "->" + to.getId);
+    // case Added(item:Item, to:Context) => throw new Exception("Remote profile added: " + item.getId + "->" + to.getId);
   }
 }
 
