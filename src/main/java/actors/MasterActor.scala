@@ -7,7 +7,7 @@ class MasterActor extends Actor {
   case class Add(item : Addable, reference : ProfileReference)
   case class Get(item : Addable, reference : ProfileReference)
 
-  class Addable(key: String)
+  sealed abstract class Addable(key: String)
 
   class ProfileReference (val uri : String)
 
