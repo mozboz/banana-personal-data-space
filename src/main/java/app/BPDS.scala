@@ -40,16 +40,15 @@ case class Remove(val item : Thing with Identifyable, val from : Store)  extends
 
 class EndpointActor extends Actor {
   def receive = {
-    case Add(item:Context,to:Profile) => throw new Exception("Let it crash");
-    case Add(item:Item,to:Context) => throw new Exception("Let it crash");
+    case Add(item:Context,to:Profile) => throw new Exception("Let it crash (context->profile)");
+    case Add(item:Item,to:Context) => throw new Exception("Let it crash (item->context)");
     case x => throw new Exception("Unknown message!");
   }
 }
 
-class BPDS extends App {
+object BPDS extends App {
 
-
-  implicit val system = ActorSystem("Profile system")
+  implicit val system = ActorSystem("ProfileSystem")
   val endpoint = system.actorOf(Props[EndpointActor], name = "EndpointActor")  // the local actor
 
   endpoint !  Add(item=Context("context name"), to=Profile("http://profile.daniel.de"))
