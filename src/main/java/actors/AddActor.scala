@@ -1,7 +1,6 @@
 package actors
 
 import akka.actor.Actor
-import messages.Add
 
 class AddActor extends Actor {
 
