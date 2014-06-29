@@ -1,5 +1,7 @@
 package actors.supervisors
 
+import java.util.concurrent.ConcurrentHashMap
+
 import akka.actor.{ActorRef, Props, Actor}
 import messages.{Add, Context, Item, Profile}
 
@@ -13,7 +15,7 @@ import scala.collection.mutable
  */
 class ProfileActor extends Actor {
 
-  var _contextActors = new mutable.HashMap[String,ActorRef]
+  var _contextActors = new ConcurrentHashMap[String, ActorRef]()
 
   def receive = {
     case "start" => {
@@ -44,9 +46,9 @@ class ProfileActor extends Actor {
 
   def getOrSpawnContext(key:String) : ActorRef = {
     if (isContextRunning(key))
-      _contextActors.get(key).get
+      _contextActors.get(key)
     else
-      spawnContext(key).get
+      spawnContext(key)
   }
 
   /**
@@ -63,7 +65,7 @@ class ProfileActor extends Actor {
    * @param key The key of the context
    */
   def stopContext(key:String) = {
-    val actorRef = _contextActors.get(key).get
+    val actorRef = _contextActors.get(key)
     context.stop(actorRef)
   }
 
