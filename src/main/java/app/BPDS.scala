@@ -14,8 +14,6 @@ trait Identifyable {
   def getId = ""
 }
 
-trait Sendable extends UrlAdressable
-
 trait Store
 
 case class Profile(url : String)
