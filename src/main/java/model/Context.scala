@@ -7,16 +7,17 @@
 package model
 
 import collection.mutable
+import app.ProfileStorage
 
 /**
  *
  */
-class Context(origin: String) {
+class Context(val key: String, originProfile: String, storage: ProfileStorage) {
 
-  var aggregatedProfiles = new mutable.HashSet[String]()
-  var referencedContexts = new mutable.HashSet[String]()
-  var referencedByContexts = new mutable.HashSet[String]()
-  var data = new mutable.HashMap[String, String]()
+  val aggregatedProfiles = new mutable.HashSet[String]()
+  val referencedContexts = new mutable.HashSet[String]()
+  val referencedByContexts = new mutable.HashSet[String]()
+  val data = new mutable.HashMap[String, String]()
 
   def setDataItem(name: String, value: String) {
     data.put(name, value)
@@ -28,12 +29,17 @@ class Context(origin: String) {
     }
 
     data(name)
+
   }
 
-  def getAggregatedProfiles = aggregatedProfiles
+  def itemExists(itemName: String) = data.contains(itemName)
 
-  def getReferencedContexts = referencedContexts
+  def load() {
 
-  def getReferencedByContexts = referencedByContexts
+  }
+
+  def save() {
+
+  }
 
 }

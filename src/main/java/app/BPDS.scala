@@ -1,8 +1,8 @@
 package app
 
-import actors.EndpointActor
 import akka.actor.{Actor, ActorSystem, Props}
 import messages.{Profile, Item, Context, Add}
+import actors.supervisors.EndpointActor
 
 object BPDS extends App {
 

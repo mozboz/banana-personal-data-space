@@ -1,38 +1,38 @@
 package model
 
 import collection.mutable
+import app.ProfileStorage
 
-class Profile(name: String) {
+class Profile(name: String, storage: ProfileStorage) {
 
   /**
    * Get all contexts
    * @return
    */
+  /*
   def getContexts: mutable.HashMap[String, Context] = {
     if (contexts == null) {
       contexts = new mutable.HashMap[String, Context]
     }
     return this.contexts
   }
-
+    */
   /**
    * Get one context by name
    * @return
    */
-  def getContextMetaData(name: String): ContextMetaData = {
-    /*
-    if (!contexts.contains(name)) {
+  def getContext(contextName: String): ImmutableContext = {
+
+    if (!contextExists(contextName)) {
       throw new Exception("contextName name " + name + " not found")
     }
 
-    this.contexts(n ame)
-    */
-    new ContextMetaData()
+    new ImmutableContext(contextName, name, contexts(contextName))
   }
 
-  def createContext(name: String) = {
-    val c: Context = new Context(name)
-    contexts.put(name, c)
+  def createContext(contextName: String) = {
+    val c: Context = new Context(contextName, name, storage)
+    contexts.put(contextName, c)
   }
 
   def saveToJson(fileName: String) {
@@ -41,14 +41,18 @@ class Profile(name: String) {
   def loadFromJson(fileName: String) {
   }
 
-  def addContextItem(contextName: String, itemName: String, itemValue: String) {
+  def addContentItem(context: ImmutableContext, itemName: String, itemValue: String) {
+    addContentItem(context.key, itemName, itemValue)
+  }
+
+  def addContentItem(contextName: String, itemName: String, itemValue: String) {
     if (!contextExists(contextName)) {
       throw new Exception("Context " + contextName + " does not exist")
     }
     contexts(contextName).setDataItem(itemName, itemValue)
   }
 
-  def getContextItem(contextName: String, itemName: String) {
+  def getContentItem(contextName: String, itemName: String): String = {
     if (!contextExists(contextName)) {
       throw new Exception("Context " + contextName + " does not exist")
     }
@@ -57,5 +61,12 @@ class Profile(name: String) {
 
   def contextExists(contextName: String): Boolean = contexts.contains(contextName)
 
-  var contexts: mutable.HashMap[String, Context] = new mutable.HashMap[String, Context]()
+  def contentItemExists(contextName: String, contentItemName: String): Boolean = {
+    if (!contextExists(contextName)) {
+      throw new Exception("Context " + contextName + " does not exist")
+    }
+    contexts(contextName).itemExists(contentItemName)
+  }
+
+  val contexts = new mutable.HashMap[String, Context]()
 }
