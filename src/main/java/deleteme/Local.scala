@@ -32,31 +32,37 @@ trait Action
 trait Thing
 
 trait UrlAdressable {
-  def getUrl = None
+  def getUrl = ""
 }
 
 trait Identifyable {
-  def getIdentifier = None
+  def getId = ""
 }
 
 trait Store
 
 class Profile
   extends Store
-  with    UrlAdressable
+  with    UrlAdressable {
+  override def getUrl = ""
+}
 
 class Context
   extends Thing
   with    Store
-  with    Identifyable
+  with    Identifyable {
+  override def getId = ""
+}
 
 class Item
   extends Thing
-  with    Identifyable
+  with    Identifyable{
+  override def getId = ""
+}
 
-class Add   (val item : Thing, val to   : Store)  extends Action
-class Update(val item : Thing, val in   : Store)  extends Action
-class Remove(val item : Thing, val from : Store)  extends Action
+class Add   (val item : Thing with Identifyable, val to   : Store)  extends Action
+class Update(val item : Thing with Identifyable, val in   : Store)  extends Action
+class Remove(val item : Thing with Identifyable, val from : Store)  extends Action
 
 
 
