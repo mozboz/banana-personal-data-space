@@ -1,9 +1,7 @@
 package app
-
 import akka.actor.{Actor, ActorSystem, Props}
 
 trait Action
-trait Message
 trait Thing
 
 trait UrlAdressable {
@@ -36,8 +34,6 @@ case class Item(id : String)
 }
 
 case class Add   (val item : Thing with Identifyable, val to   : Store)  extends Action
-// case class Added (val item : Thing with Identifyable, val to   : Store)  extends Message
-
 case class Update(val item : Thing with Identifyable, val in   : Store)  extends Action
 case class Remove(val item : Thing with Identifyable, val from : Store)  extends Action
 
@@ -55,6 +51,6 @@ object BPDS extends App {
   implicit val system = ActorSystem("ProfileSystem")
   val endpoint = system.actorOf(Props[EndpointActor], name = "EndpointActor")  // the local actor
 
-  endpoint !  Add(item=Context("context name"), to=Profile("http://profile.daniel.de"))
-  endpoint !  Add(item=Item("item name"), to=Context("context name"))
+  endpoint !  Add(item=Context("contextName name"), to=Profile("http://profile.daniel.de"))
+  endpoint !  Add(item=Item("item name"), to=Context("contextName name"))
 }
