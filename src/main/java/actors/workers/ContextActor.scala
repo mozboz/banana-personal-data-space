@@ -1,6 +1,8 @@
 package actors.workers
 
 import akka.actor.Actor
+import messages.control.{StopContext, StartContext}
+import messages.data.{WriteValue, ReadValue}
 
 /**
  * Represents one specific context. Holds a instance of the model's Context class
@@ -9,19 +11,16 @@ import akka.actor.Actor
 class ContextActor extends Actor {
 
   def receive = {
-    case "setup" => {
+    case x:StartContext => {
       // Configure this actor. Necessary step before sending any other message.
     }
-    case "load" => {
-      // Load a context from its storage location
-    }
-    case "persist" => {
+    case x:StopContext => {
       // Save a context to its storage location
     }
-    case "readValue" => {
+    case x:ReadValue => {
       // Read a value from the context
     }
-    case "writeValue" => {
+    case x:WriteValue => {
       // Write a value to the context
     }
   }

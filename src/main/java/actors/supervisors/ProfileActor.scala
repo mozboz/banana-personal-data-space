@@ -2,7 +2,8 @@ package actors.supervisors
 
 import actors.workers.ContextActor
 import akka.actor.{ActorRef, Props, Actor}
-import messages.{Add, Context, Item, Profile}
+import messages.control.{StartContext, StopProfile, StartProfile}
+import messages.data.{WriteValue, ReadValue}
 
 import scala.collection.mutable
 
@@ -17,29 +18,29 @@ class ProfileActor extends Actor {
   var _contextActors = new mutable.HashMap[String, ActorRef]()
 
   def receive = {
-    case "start" => {
+    case x:StartProfile => {
       // Load the profiles metadata and configuration.
     }
-    case "stop" => {
+    case x:StopProfile => {
       // Persist the profile's metadata and configuration.
       // Notify all children (contexts) to do the same and collect the responses.
     }
-    case "createContext" => {
+    case x:StartContext => {
       // Check metadata if the context already exists
       //  already existing -> throw exception
       //  not existing     -> create new entry in metadata and assign a storage location
     }
-    case "readValue" => {
+    case x:ReadValue => {
       // Check if there is already an actor which represents the context
       //  already existing -> send a request to this actor
       //  not existing     -> spawn a new actor and send the request to this actor
-      getOrSpawnContext("key") ! "readValue"
+      getOrSpawnContext(x.key) ! x
     }
-    case "writeValue" => {
+    case x:WriteValue => {
       // Check if there is already an actor which represents the context
       //  already existing -> send a request to this actor
       //  not existing     -> spawn a new actor and send the request to this actor
-      getOrSpawnContext("key") ! "writeValue"
+      getOrSpawnContext(x.key) ! x
     }
   }
 

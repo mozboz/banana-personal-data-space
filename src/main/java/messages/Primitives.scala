@@ -1,5 +1,5 @@
 package messages
-
+/*
 trait Action
 trait Thing
 
@@ -31,3 +31,4 @@ case class Item(id : String)
   with    Identifyable{
   override def getId = id
 }
+*/
