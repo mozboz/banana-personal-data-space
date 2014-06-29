@@ -2,6 +2,7 @@ package deleteme
 
 import akka.actor.{Props, ActorSystem}
 
+/*
 // Class hierarchy:
 trait Expr
 
@@ -24,8 +25,7 @@ object Mul {
   //def apply() = new Mul(Num(1), Num(2))
   def unapply(m : Mul) = Some (m.left, m.right)
 }
-
-
+*/
 
 trait Action
 
@@ -39,30 +39,31 @@ trait Identifyable {
   def getId = ""
 }
 
-trait Store
-
-class Profile
-  extends Store
-  with    UrlAdressable {
-  override def getUrl = ""
+trait Store {
 }
 
-class Context
+case class Profile(url : String)
+  extends Store
+  with    UrlAdressable {
+  override def getUrl = url
+}
+
+case class Context(id : String)
   extends Thing
   with    Store
   with    Identifyable {
-  override def getId = ""
+  override def getId = id
 }
 
-class Item
+case class Item(id : String)
   extends Thing
   with    Identifyable{
-  override def getId = ""
+  override def getId = id
 }
 
-class Add   (val item : Thing with Identifyable, val to   : Store)  extends Action
-class Update(val item : Thing with Identifyable, val in   : Store)  extends Action
-class Remove(val item : Thing with Identifyable, val from : Store)  extends Action
+case class Add   (val item : Thing with Identifyable, val to   : Store)  extends Action
+case class Update(val item : Thing with Identifyable, val in   : Store)  extends Action
+case class Remove(val item : Thing with Identifyable, val from : Store)  extends Action
 
 
 
@@ -77,15 +78,24 @@ class Remove(val item : Thing with Identifyable, val from : Store)  extends Acti
  */
 object Local extends App {
 
+  /*
   val expr = Mul(Num(12), Num(1));
 
   val simplified = expr match {
     case Mul(x, Num(1)) => x
   }
+  */
+
+
+
 
   implicit val system = ActorSystem("LocalSystem")
   val localActor = system.actorOf(Props[LocalActor], name = "LocalActor")  // the local actor
   localActor ! "START"                                                     // start the action
+
+
+  localActor !  Add(item=Context("context name"), to=Profile("http://profile.daniel.de"))
+  localActor !  Add(item=Item("item name"), to=Context("context name"))
 
 }
 
