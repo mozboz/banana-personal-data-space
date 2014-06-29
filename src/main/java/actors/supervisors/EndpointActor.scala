@@ -1,7 +1,7 @@
-package actors
+package actors.supervisors
 
 import akka.actor.Actor
-import messages.{Profile,Context,Item,Add}
+import messages.{Add, Context, Item, Profile}
 
 /**
  * The main endpoint of the application. Acts as a message broker.
