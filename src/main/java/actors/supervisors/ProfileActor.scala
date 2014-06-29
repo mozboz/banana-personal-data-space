@@ -2,6 +2,7 @@ package actors.supervisors
 
 import java.util.concurrent.ConcurrentHashMap
 
+import actors.workers.ContextActor
 import akka.actor.{ActorRef, Props, Actor}
 import messages.{Add, Context, Item, Profile}
 
@@ -35,12 +36,12 @@ class ProfileActor extends Actor {
       //  already existing -> send a request to this actor
       //  not existing     -> spawn a new actor and send the request to this actor
       getOrSpawnContext("key") ! "readValue"
-
     }
     case "writeValue" => {
       // Check if there is already an actor which represents the context
       //  already existing -> send a request to this actor
       //  not existing     -> spawn a new actor and send the request to this actor
+      getOrSpawnContext("key") ! "writeValue"
     }
   }
 
@@ -58,6 +59,14 @@ class ProfileActor extends Actor {
   def spawnContext(key:String) = {
     val contextActor = context.actorOf(Props[ContextActor])
     _contextActors.put(key, contextActor)
+  }
+
+  /**
+   * Sets up a newly spawned context actor.
+   * @param actorRef The ref to the actor which to setup.
+   */
+  def setupContext(actorRef : ActorRef) = {
+
   }
 
   /**

@@ -1,9 +1,6 @@
-package actors.supervisors
+package actors.workers
 
 import akka.actor.Actor
-import model.Context
-
-import scala.collection.mutable
 
 /**
  * Represents one specific context. Holds a instance of the model's Context class
