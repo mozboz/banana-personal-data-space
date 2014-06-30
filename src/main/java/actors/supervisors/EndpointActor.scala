@@ -1,5 +1,6 @@
 package actors.supervisors
 
+/*
 import akka.actor.Actor
 import messages.{Add, Context, Item, Profile}
 
@@ -12,3 +13,4 @@ class EndpointActor extends Actor {
     case Add(item:Item,to:Context) => throw new Exception("Let it crash: " + item.getId + "->" + to.getId);
   }
 }
+*/

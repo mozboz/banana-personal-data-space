@@ -18,10 +18,18 @@ class ContextActor extends Actor {
       // Save a context to its storage location
     }
     case x:ReadValue => {
-      // Read a value from the context
+      // Check if the key exists
+      //  if not -> return an error
+
+      // Check if the context's data is loaded (or at least the requested key)
+      //  if not -> load it
+
+      // Return the requested data
     }
     case x:WriteValue => {
-      // Write a value to the context
+      // Check if the key exists
+      //  if not -> create
+      //  else   -> update
     }
   }
 }
