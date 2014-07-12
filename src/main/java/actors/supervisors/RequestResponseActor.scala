@@ -36,15 +36,14 @@ trait RequestResponseActor {
       })
       handler.apply(x)
     } catch {
-      case e: Exception => {
+      case e: Exception =>
         val errorResponse = new UnexpectedErrorResponse()
         errorResponse.setRequestId(x.messageId)
         sender ! errorResponse
-      }
     }
   }
 
-  def sendResponse(x:Request, y:Response) {
+  def respondTo(x:Request, y:Response) {
     y.setRequestId(x.messageId)
     _pendingResponses.get(x.messageId).get.apply(y)
     _pendingResponses.remove(x.messageId)
@@ -54,7 +53,7 @@ trait RequestResponseActor {
 trait Request extends  Message
 
 trait Response extends Message {
-  private var _requestId : UUID = null;
+  private var _requestId : UUID = null
 
   def setRequestId(messageId:UUID) {
     _requestId = messageId

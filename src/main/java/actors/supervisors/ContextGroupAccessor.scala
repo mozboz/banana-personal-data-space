@@ -30,8 +30,8 @@ class ContextGroupAccessor extends Actor with RequestResponseActor {
 
   val _managedContexts = new mutable.HashMap[String,ActorRef]
 
-  var _contextOwner : ActorRef = null;
-  var _profile : ActorRef = null;
+  var _contextOwner : ActorRef = null
+  var _profile : ActorRef = null
 
   def receive = {
 
@@ -43,40 +43,37 @@ class ContextGroupAccessor extends Actor with RequestResponseActor {
     case x:PropagateContextOwner => _contextOwner = x.contextOwnerRef
 
     // Handles all responses to previously issued requests
-    case x:Response => {
+    case x:Response =>
       // @todo:Notify sender about the exact operation that failed because of the uninitialized state
-      maySendUnititializedAndThrowException
+      maySendUninitializedAndThrowException()
       handleResponse(x)
-    }
 
-    case x:Request => {
+
+    case x:Request =>
       // @todo:Notify sender about the exact operation that failed because of the uninitialized state
-      maySendUnititializedAndThrowException
-      handleRequest(x, sender, {
+      maySendUninitializedAndThrowException()
+      handleRequest(x, sender(), {
 
         // Handle requests
-        case x: Read => {
+        case x: Read =>
           withContextActorRef(x.fromContext,
             (contextActorRef) => {
               read(contextActorRef, x.key,
-                (data) => sendResponse(x, ReadResponse(data, x.fromContext)), // send response with data
+                (data) => respondTo(x, ReadResponse(data, x.fromContext)), // send response with data
                 (error) => throwExFromMessage(x, "Error while reading from context " + x.fromContext + ". " + error))
             },
             (error) => throwExFromMessage(x, "Error while getting the context actor ref. Context:" + x.fromContext + ". Error: " + error))
-        }
 
-        case x: Write => {
+        case x: Write =>
           withContextActorRef(x.toContext,
             (contextActorRef) => {
               write(contextActorRef, x.key,
                 () => x.value, // data to write
-                () => sendResponse(x, new WriteResponse), // success
+                () => respondTo(x, new WriteResponse), // success
                 (error) => throwExFromMessage(x, "Error while writing to context " + x.toContext + ". " + error))
             },
             (error) => throwExFromMessage(x, "Error while getting the context actor ref. Context:" + x.toContext + ". Error: " + error))
-        }
       })
-    }
   }
 
   def handleContextSpawned(key:String, actorRef:ActorRef) {
@@ -109,15 +106,13 @@ class ContextGroupAccessor extends Actor with RequestResponseActor {
                     no:() => Unit)  {
     if (_managedContexts.contains(contextKey)) {
       yes()
-    } else {
-      onResponseOf(
-        ContextExists(contextKey), _profile, {
-          case ContextExistsResponse(true) => yes()
-          case ContextExistsResponse(false) => no()
-          case x:UnexpectedErrorResponse => throwExFromMessage(x)
-        }
-      )
-    }
+    } else onResponseOf(
+      ContextExists(contextKey), _profile, {
+        case ContextExistsResponse(true) => yes()
+        case ContextExistsResponse(false) => no()
+        case x:UnexpectedErrorResponse => throwExFromMessage(x)
+      }
+    )
   }
 
   def contextRunning(contextKey:String,
@@ -153,7 +148,7 @@ class ContextGroupAccessor extends Actor with RequestResponseActor {
              data:() => String,
              success:() => Unit,
              error:(String) => Unit) {
-    val toWriteString = data
+    //val toWriteString = data
     success()
   }
 
@@ -161,20 +156,20 @@ class ContextGroupAccessor extends Actor with RequestResponseActor {
     throw new Exception("Error while processing the message with Id '" + m.messageId + "', Type '" + m.getClass.getName + "': " + additional)
   }
 
-  def maySendUnititializedAndThrowException {
+  def maySendUninitializedAndThrowException() {
     if (_contextOwner == null && _profile == null) {
       sender ! UninitializedResponse(List("PropagateContextOwner","PropagateProfile"))
-      throwUninitializedExcpetion
+      throwUninitializedException()
     } else if (_contextOwner == null) {
       sender ! UninitializedResponse(List("PropagateContextOwner"))
-      throwUninitializedExcpetion
+      throwUninitializedException()
     } else if (_profile == null) {
       sender ! UninitializedResponse(List("PropagateProfile"))
-      throwUninitializedExcpetion
+      throwUninitializedException()
     }
   }
 
-  def throwUninitializedExcpetion {
-    throw new Exception("The context router is not properly initialized. It requires at least a PropagateContextOwner and PropagateProfile event.");
+  def throwUninitializedException () {
+    throw new Exception("The context router is not properly initialized. It requires at least a PropagateContextOwner and PropagateProfile event.")
   }
 }
