@@ -1,143 +1,9 @@
 package actors.supervisors
 
-import java.util.UUID
 import akka.actor.{ActorRef, Actor}
+import events.{PropagateContextOwner, PropagateProfile, ContextStopped, ContextSpawned}
+import requests._
 import scala.collection.mutable
-
-
-trait RequestResponse {
-  private val _pendingRequests = new mutable.HashMap[UUID,(Response) => (Boolean)]
-  private val _pendingResponses = new mutable.HashMap[UUID,(Response) => Unit]
-
-  def handleResponse(x:Response) {
-    val processed = _pendingRequests
-      .getOrElse(x.requestId, (x:Response) => false)
-      .apply(x)
-
-    if (processed)
-      _pendingRequests.remove(x.requestId)
-  }
-
-  def onResponseOf(message:Message, to:ActorRef, callback:(Response) => (Unit)) {
-    // @todo: Add timeout for the case that the response is never provided
-    _pendingRequests.put(message.messageId, (x) =>  {
-        callback.apply(x)
-        true
-      })
-    to ! message
-  }
-
-  def handleRequest(x: Request, sender:ActorRef, handler: (Request) => (Unit)) {
-    try {
-      // @todo: Add timeout for the case that the response is never provided
-      _pendingResponses.put(x.messageId, (response) => {
-        sender ! response
-      })
-      handler.apply(x)
-    } catch {
-      case e: Exception => {
-        val errorResponse = new UnexpectedErrorResponse()
-        errorResponse.setRequestId(x.messageId)
-        sender ! errorResponse
-      }
-    }
-  }
-
-  def sendResponse(x:Request, y:Response) {
-    y.setRequestId(x.messageId)
-    _pendingResponses.get(x.messageId).get.apply(y)
-    _pendingResponses.remove(x.messageId)
-  }
-}
-
-trait Message {
-  private val _messageId = UUID.randomUUID()
-  def messageId = _messageId
-}
-
-trait Event extends Message
-
-trait Request extends  Message
-
-trait Response extends Message {
-  private var _requestId : UUID = null;
-
-  def setRequestId(messageId:UUID) {
-    _requestId = messageId
-  }
-
-  def requestId = _requestId
-}
-
-/**
- * Reads a value from a context
- * @param key The key
- * @param fromContext The context
- */
-case class Read(key:String, fromContext:String) extends Request
-case class ReadResponse(data:String, from:String) extends Response
-
-/**
- * Writes a value to a context
- * @param key The key
- * @param value The value
- * @param toContext The context
- */
-case class Write(key:String, value:String, toContext:String) extends Request
-case class WriteResponse() extends Response
-
-/**
- * Asks if a context exists
- * @param context The name of the context to check
- */
-case class ContextExists(context:String) extends Request
-case class ContextExistsResponse(exists:Boolean) extends Response
-
-/**
- * Asks if a context could be spawned
- * @param context The name of the context to spawn
- */
-case class SpawnContext(context:String) extends Request
-case class SpawnContextResponse(actorRef:ActorRef) extends Response
-
-/**
- * Is sent by RequestHandlers to indicate that a request failed
- */
-case class UnexpectedErrorResponse() extends Response
-
-/**
- * Notification sent by the context owner to notify everybody involved that
- * a new context was spawned.
- * @param key The key of the spawned context
- * @param actorRef The actor reference
- */
-case class ContextSpawned(key:String,actorRef:ActorRef) extends Event
-/**
- * Notification sent by the context owner to notify everybody involved that
- * a context was stopped.
- * @param key The key of the stopped context
- */
-case class ContextStopped(key:String) extends Event
-
-/**
- * Propagates the context owner to all involved parties
- * @param contextOwnerRef
- */
-case class PropagateContextOwner(contextOwnerRef:ActorRef) extends Event
-
-/**
- * Propagates the profile to all involved parties
- * @param profileRef
- */
-case class PropagateProfile(profileRef:ActorRef) extends Event
-
-/**
- * Message that contains the names of the event classes
- * which must be sent first in order to use this actor.
- * @param messages A list of case class names
- */
-case class Uninitialized(messages:List[String]) extends Message
-//@todo: Replace list of strings with a list of types
 
 /**
  * Actor which provides access to a group of context actors.
@@ -156,11 +22,11 @@ case class Uninitialized(messages:List[String]) extends Message
  *   * SpawnContext:
  *   * ContextExists:
  *
- *   Forwards the following requests:
+ *   Proxies the following requests:
  *   * Read: forwards every read request which arrives to the context actor and then proxies the reply back to the caller.
  *   * Write:
  */
-class ContextGroupAccessor extends Actor with RequestResponse {
+class ContextGroupAccessor extends Actor with RequestResponseActor {
 
   val _managedContexts = new mutable.HashMap[String,ActorRef]
 
@@ -178,11 +44,13 @@ class ContextGroupAccessor extends Actor with RequestResponse {
 
     // Handles all responses to previously issued requests
     case x:Response => {
+      // @todo:Notify sender about the exact operation that failed because of the uninitialized state
       maySendUnititializedAndThrowException
       handleResponse(x)
     }
 
     case x:Request => {
+      // @todo:Notify sender about the exact operation that failed because of the uninitialized state
       maySendUnititializedAndThrowException
       handleRequest(x, sender, {
 
@@ -191,7 +59,7 @@ class ContextGroupAccessor extends Actor with RequestResponse {
           withContextActorRef(x.fromContext,
             (contextActorRef) => {
               read(contextActorRef, x.key,
-                (data) => sendResponse(x, ReadResponse(data, x.fromContext)),
+                (data) => sendResponse(x, ReadResponse(data, x.fromContext)), // send response with data
                 (error) => throwExFromMessage(x, "Error while reading from context " + x.fromContext + ". " + error))
             },
             (error) => throwExFromMessage(x, "Error while getting the context actor ref. Context:" + x.fromContext + ". Error: " + error))
@@ -295,13 +163,13 @@ class ContextGroupAccessor extends Actor with RequestResponse {
 
   def maySendUnititializedAndThrowException {
     if (_contextOwner == null && _profile == null) {
-      sender ! Uninitialized(List("PropagateContextOwner","PropagateProfile"))
+      sender ! UninitializedResponse(List("PropagateContextOwner","PropagateProfile"))
       throwUninitializedExcpetion
     } else if (_contextOwner == null) {
-      sender ! Uninitialized(List("PropagateContextOwner"))
+      sender ! UninitializedResponse(List("PropagateContextOwner"))
       throwUninitializedExcpetion
     } else if (_profile == null) {
-      sender ! Uninitialized(List("PropagateProfile"))
+      sender ! UninitializedResponse(List("PropagateProfile"))
       throwUninitializedExcpetion
     }
   }
