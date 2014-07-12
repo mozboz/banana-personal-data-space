@@ -26,11 +26,12 @@ import scala.collection.mutable
  *   * Read: forwards every read request which arrives to the context actor and then proxies the reply back to the caller.
  *   * Write:
  */
-class ContextGroupAccessor extends Actor with RequestResponseActor {
+class ContextGroupAccessor extends Actor with RequestResponseActor
+                                         with MessageHandler {
 
   val _managedContexts = new mutable.HashMap[String,ActorRef]
 
-  var _contextOwner : ActorRef = null
+  var _contextGroupOwner : ActorRef = null
   var _profile : ActorRef = null
 
   def receive = {
@@ -40,7 +41,7 @@ class ContextGroupAccessor extends Actor with RequestResponseActor {
     case x:ContextStopped => _managedContexts.remove(x.key)
 
     case x:PropagateProfile => _profile = x.profileRef
-    case x:PropagateContextOwner => _contextOwner = x.contextOwnerRef
+    case x:PropagateContextOwner => _contextGroupOwner = x.contextOwnerRef
 
     // Handles all responses to previously issued requests
     case x:Response =>
@@ -80,6 +81,13 @@ class ContextGroupAccessor extends Actor with RequestResponseActor {
     _managedContexts.getOrElse(key, () => _managedContexts.put(key, actorRef))
   }
 
+  /**
+   * Ensures that the contextActorRef-continuation gets a ActorRef to a running
+   * context actor else calls the error continuation.
+   * @param contextKey The key of the context
+   * @param contextActorRef The success continuation with the ref to the running actor
+   * @param error The error continuation.
+   */
   def withContextActorRef(contextKey:String,
                           contextActorRef:(ActorRef) => Unit,
                           error:(Exception) => Unit) {
@@ -97,17 +105,24 @@ class ContextGroupAccessor extends Actor with RequestResponseActor {
             )
           })
       },
-      () => error(new Exception("The context with key " + contextKey + "does not exist."))
+      () => error(new Exception("The context with key " + contextKey + " does not exist."))
     )
   }
 
+  /**
+   * Looks first if the context is already managed by this actor, then asks
+   * the supervising ContextGroupOwner.
+   * @param contextKey The key of the context
+   * @param yes yes-continuation
+   * @param no no-continuation
+   */
   def contextExists(contextKey:String,
                     yes:() => Unit,
                     no:() => Unit)  {
     if (_managedContexts.contains(contextKey)) {
       yes()
     } else onResponseOf(
-      ContextExists(contextKey), _profile, {
+      ContextExists(contextKey), _contextGroupOwner, {
         case ContextExistsResponse(true) => yes()
         case ContextExistsResponse(false) => no()
         case x:UnexpectedErrorResponse => throwExFromMessage(x)
@@ -115,6 +130,12 @@ class ContextGroupAccessor extends Actor with RequestResponseActor {
     )
   }
 
+  /**
+   * Checks if the specified context is already managed by this accessor.
+   * @param contextKey The key of the context
+   * @param yes yes-continuation
+   * @param no no-continuation
+   */
   def contextRunning(contextKey:String,
                      yes:(ActorRef) => Unit,
                      no:() => Unit) {
@@ -124,11 +145,17 @@ class ContextGroupAccessor extends Actor with RequestResponseActor {
       no()
   }
 
+  /**
+   * Asks the ContextGroupOwner to spawn the specified context.
+   * @param contextKey The key of the context
+   * @param started continuation to execute when the context was started
+   * @param error continuation to execute when the starting failed
+   */
   def startContext(contextKey:String,
                    started:(ActorRef) => Unit,
                    error:(Exception) => Unit) {
     onResponseOf(
-      SpawnContext(contextKey), _contextOwner, {
+      SpawnContext(contextKey), _contextGroupOwner, {
         case x:SpawnContextResponse => started(x.actorRef)
         case x:UnexpectedErrorResponse => error(new Exception("Error while starting the context " + contextKey + ". See context owners log."))
       }
@@ -152,15 +179,13 @@ class ContextGroupAccessor extends Actor with RequestResponseActor {
     success()
   }
 
-  def throwExFromMessage(m:Message, additional:String = "") {
-    throw new Exception("Error while processing the message with Id '" + m.messageId + "', Type '" + m.getClass.getName + "': " + additional)
-  }
+
 
   def maySendUninitializedAndThrowException() {
-    if (_contextOwner == null && _profile == null) {
+    if (_contextGroupOwner == null && _profile == null) {
       sender ! UninitializedResponse(List("PropagateContextOwner","PropagateProfile"))
       throwUninitializedException()
-    } else if (_contextOwner == null) {
+    } else if (_contextGroupOwner == null) {
       sender ! UninitializedResponse(List("PropagateContextOwner"))
       throwUninitializedException()
     } else if (_profile == null) {

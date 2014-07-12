@@ -1,8 +1,8 @@
 package actors.supervisors
 
-import akka.actor.{ActorRef, Actor}
+import akka.actor.{Props, ActorRef, Actor}
 import events.PropagateProfile
-import requests.{ContextExistsResponse, UnexpectedErrorResponse, ContextExists, SpawnContext}
+import requests._
 
 import scala.collection.mutable
 
@@ -22,9 +22,11 @@ import scala.collection.mutable
  *   Proxies the following requests:
  *   * ContextExists: Proxies the received request to the profile actor and then responds with the result
  */
-class ContextGroupOwnerActor extends Actor with RequestResponseActor {
+class ContextGroupOwnerActor extends Actor with RequestResponseActor
+                                           with MessageHandler  {
 
-  val _managedContexts = new mutable.HashMap[String,ActorRef]
+  val _managedContexts = new mutable.HashSet[String]
+  val _runningContexts = new mutable.HashMap[String,ActorRef]
   var _profile : ActorRef = null
 
   def receive = {
@@ -32,26 +34,51 @@ class ContextGroupOwnerActor extends Actor with RequestResponseActor {
     case x:PropagateProfile => _profile = x.profileRef
 
     case x:Request => handleRequest(x, sender(), {
-        case x: SpawnContext =>
-        case x: ContextExists =>
+
+        case x: SpawnContext => spawnContext(x.context,
+          (actorRef) => respondTo(x, SpawnContextResponse(actorRef))
+                        /* @todo: Send the ContextSpawned event */,
+          (exception) => throwExFromMessage(x, "Error while starting the context " + x.context + "."))
+
+        case x: ContextExists => contextExists(x.context,
+          (actorRefOption) => respondTo(x, ContextExistsResponse(exists = true)),
+          () => respondTo(x, ContextExistsResponse(exists = false)),
+          (exception) => throwExFromMessage(x, "Error while checking if context " + x.context + " exists."))
       })
 
     case x:Response => handleResponse(x)
   }
 
+  /**
+   * Spawns a new context.
+   * @param contextKey The key of the context to spawn
+   * @param success actor successfully spawned continuation
+   * @param error actor could not be started continuation
+   */
+  def spawnContext(contextKey:String,
+                   success:(ActorRef) => Unit,
+                   error:(Exception) => Unit) {
+    try {
+      val contextActorRef = context.system.actorOf(Props[ContextActor], contextKey)
+      _runningContexts.put(contextKey, contextActorRef)
+      success(contextActorRef)
+    } catch {
+      case e:Exception => error(e)
+    }
+  }
 
   /**
    * Checks if the supplied context is running and calls the yes-continuation
    * with the found actor reference else calls the no continuation
-   * @param contextKey
-   * @param yes
-   * @param no
+   * @param contextKey The key of the context
+   * @param yes The yes-continuation
+   * @param no The no-continuation
    */
   def contextRunning(contextKey:String,
                      yes:(ActorRef) => Unit,
                      no: () => Unit) {
-    if (_managedContexts.contains(contextKey))
-      yes(_managedContexts.get(contextKey).get)
+    if (_runningContexts.contains(contextKey))
+      yes(_runningContexts.get(contextKey).get)
     else
       no()
   }
