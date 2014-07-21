@@ -9,3 +9,4 @@ import actors.behaviors.Response
  */
 case class UninitializedResponse(messages:List[String]) extends Response
 //@todo: Replace list of strings with a list of types
+//@todo: Derive this response from a more general "error response" in order to unify the error handling on lower levels
