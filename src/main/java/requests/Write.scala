@@ -1,6 +1,6 @@
 package requests
 
-import actors.supervisors.{Response, Request}
+import actors.behaviors.{Response, Request}
 
 /**
  * Writes a value to a context
@@ -10,3 +10,5 @@ import actors.supervisors.{Response, Request}
  */
 case class Write(key:String, value:String, toContext:String) extends Request
 case class WriteResponse() extends Response
+
+case class WriteToContext(key:String, value:String) extends Request

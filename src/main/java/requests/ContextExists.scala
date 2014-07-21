@@ -1,6 +1,6 @@
 package requests
 
-import actors.supervisors.{Response, Request}
+import actors.behaviors.{Response, Request}
 
 /**
  * Asks if a context exists

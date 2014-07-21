@@ -1,4 +1,4 @@
-package actors.supervisors
+package actors.behaviors
 
 
 trait MessageHandler {

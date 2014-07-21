@@ -1,6 +1,6 @@
 package events
 
-import actors.supervisors.Event
+import actors.behaviors.Event
 import akka.actor.ActorRef
 
 /**

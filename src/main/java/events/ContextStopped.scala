@@ -1,6 +1,6 @@
 package events
 
-import actors.supervisors.Event
+import actors.behaviors.Event
 
 /**
  * Notification sent by the context owner to notify everybody involved that

@@ -1,6 +1,6 @@
 package requests
 
-import actors.supervisors.{Request, Response}
+import actors.behaviors.{Request, Response}
 import akka.actor.ActorRef
 
 /**

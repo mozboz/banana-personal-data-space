@@ -1,6 +1,6 @@
 package requests
 
-import actors.supervisors.{Response, Message}
+import actors.behaviors.Response
 
 /**
  * Message that contains the names of the event classes
