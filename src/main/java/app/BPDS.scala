@@ -44,26 +44,6 @@ object BPDS extends App {
   _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
   _contextGroupAccessor ! DisconnectContextGroupOwner()
 
-  0 to 100 foreach( _ => {
-    _contextGroupAccessor ! Read("Value1", "Context1")
-    _contextGroupAccessor ! Read("Value1", "Context2")
-    _contextGroupAccessor ! Read("Value1", "Context3")
-    _contextGroupAccessor ! Read("Value1", "Context4")
-    _contextGroupAccessor ! Read("Value1", "Context5")
-    _contextGroupAccessor ! Read("Value1", "Context6")
-  })
-
-  _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
-  _contextGroupAccessor ! DisconnectContextGroupOwner()
-
-  0 to 100 foreach( _ => {
-    _contextGroupAccessor ! Read("Value1", "Context7")
-    _contextGroupAccessor ! Read("Value1", "Context8")
-    _contextGroupAccessor ! Read("Value1", "Context9")
-    _contextGroupAccessor ! Read("Value1", "Context10")
-    _contextGroupAccessor ! Read("Value1", "Context11")
-    _contextGroupAccessor ! Read("Value1", "Context12")
-  })
 
   _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
 
@@ -77,4 +57,12 @@ object BPDS extends App {
   _contextGroupAccessor ! Write("Key2", "Value2", "Context2")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context3")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context4")
+
+
+  0 to 10 foreach( _ => {
+    _contextGroupAccessor ! Read("Key1", "Context1")
+    _contextGroupAccessor ! Read("Key1", "Context2")
+    _contextGroupAccessor ! Read("Key1", "Context3")
+    _contextGroupAccessor ! Read("Key1", "Context4")
+  })
 }

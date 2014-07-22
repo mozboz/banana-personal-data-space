@@ -1,15 +1,16 @@
 package actors.workers
 
+import scala.util.control.Breaks._
 import java.io.RandomAccessFile
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
 import actors.behaviors.{Request, MessageHandler, RequestResponder}
+import actors.workers.models.{KeyMapIndexEntry, KeyMapIndex}
 import akka.actor.Actor
 import akka.event.LoggingReceive
 import events.{ConnectFile, DisconnectFile}
-import model.{ContextIndex, ContextIndexEntry}
-import requests.{WriteResponse, WriteToContext, ReadResponse, ReadFromContext}
+import requests._
 import utils.BufferedResource
 
 class LocalContextActor extends Actor with RequestResponder
@@ -17,9 +18,9 @@ class LocalContextActor extends Actor with RequestResponder
 
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
 
-  private val _contextIndex = new ContextIndex
+  private val _contextIndex = new KeyMapIndex
 
-  // @todo: only for testing
+  // @todo: only for testing - replace with ConfigurationActor support
   context.self ! ConnectFile("/home/daniel/profileSystem/" + context.self.path.name + ".txt")
 
   def receive = LoggingReceive({
@@ -29,10 +30,20 @@ class LocalContextActor extends Actor with RequestResponder
 
     case x:Request => handleRequest(x, sender(), {
 
-      case x:ReadFromContext => respond(x, ReadResponse("bla", context.self.path.name))
+      case x:ReadFromContext =>
+        readFromDataFile(x.key,
+          (data) => respond(x, ReadResponse(data, context.self.path.name)),
+          (error) => respond(x, ErrorResponse(error)))
+
 
       case x:WriteToContext =>
-        _contextIndex.add(appendToDataFile(x.key, x.value))
+        appendToDataFile(x.key, x.value,
+          (indexEntry) => _contextIndex.add(indexEntry),
+          // @todo: There should be two types of write response: 'accepted' and 'written'
+          // the last should be sent here 'whenWritten'
+          (exception) => respond(x, ErrorResponse(exception))
+        )
+        // @todo: There should be two types of write response: 'accepted' and 'written'
         respond(x, WriteResponse())
     })
   })
@@ -45,7 +56,7 @@ class LocalContextActor extends Actor with RequestResponder
    * @param withBuffer The success continuation
    * @param error The error continuation
    */
-  def withBuffer(position:Int,
+  private def withBuffer(position:Int,
                  length:Int,
                  withBuffer:(MappedByteBuffer) => Unit,
                  error:(Exception) => Unit) {
@@ -56,30 +67,71 @@ class LocalContextActor extends Actor with RequestResponder
   }
 
   /**
-   * Appends a value to the data file and indexes it.
+   * Appends a value to the data file and creates a index entry for it.
    * @param key The key
    * @param data The data
+   * @param indexEntry Is called when the corresponding index entry is available
+   * @param error Is called in case of an error
    * @return A index entry
    */
-  def appendToDataFile(key:String, data:String) : ContextIndexEntry = {
+  private def appendToDataFile(key:String,
+                       data:String,
+                       indexEntry: (KeyMapIndexEntry) => Unit,
+                       error: (Exception) => Unit) {
 
     val bytes = data.getBytes("UTF-8")
-    val appendPosition = _contextIndex.getNextAddressBytes
-    val appendBlock = _contextIndex.pad(_contextIndex.getNextAddressBytes)
-    val blocks = _contextIndex.pad(bytes.length)
-    val paddedLength = _contextIndex.padBytes(bytes.length)
 
-    val contextIndexEntry = new ContextIndexEntry(key, appendBlock, blocks)
+    val paddedBytes = new Array[Byte](_contextIndex.padBytes(bytes.length))
+    val blocks = _contextIndex.pad(paddedBytes.length)
 
-    withBuffer(appendPosition, paddedLength,
-      (buffer) => buffer.put(bytes),
-      (exception) => throw exception
+    val contextIndexEntry = new KeyMapIndexEntry(
+      key = key,
+      address = _contextIndex.pad(_contextIndex.getNextAddressBytes),
+      length = blocks)
+
+    indexEntry(contextIndexEntry)
+
+    // @todo: Find a way to avoid array copy (ByteBuffer?)
+    bytes.copyToArray(paddedBytes)
+
+    withBuffer(_contextIndex.getNextAddressBytes, paddedBytes.length,
+      (buffer) => {
+        buffer.put(paddedBytes)
+        contextIndexEntry.setProcessed()
+      },
+      // @todo: Provide simple mechanism to wrap the exception with some information about the current method
+      (exception) => error(exception)
     )
-
-    contextIndexEntry
   }
 
-  def readFromFile () {
+  /**
+   * Reads data from the data file.
+   * @param key The key
+   * @return The data
+   */
+  private def readFromDataFile (key:String, withData:(String) => Unit, error:(Exception) => Unit) {
+    val range = _contextIndex.getRangeBytes(key)
 
+    withBuffer(range._1, range._2,
+      (buffer) => {
+        val paddedData = new Array[Byte](range._2 - range._1)
+        buffer.get(paddedData)
+
+        var data : Array[Byte] = null
+
+        // @todo: Find a more elegant way to tell the content size of a block (header?, map of partial blocks?)
+        breakable {
+          for ((x, i) <- paddedData.view.zipWithIndex) {
+            if (x == 0) {
+              data = paddedData.slice(0, i)
+              break()
+            }
+          }
+        }
+
+        withData(new String(data, "UTF-8"))
+      },
+      (exception) => error(exception)
+    )
   }
 }

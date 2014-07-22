@@ -1,17 +1,15 @@
-package model
-
-import java.util.{Date, Calendar}
+package actors.workers.models
 
 import scala.collection.mutable
 
-class ContextIndex {
+class KeyMapIndex {
 
-  private val _entries = new mutable.HashMap[String, ContextIndexEntry]
-  private var _lastEntry : Option[ContextIndexEntry] = None
+  private val _entries = new mutable.HashMap[String, KeyMapIndexEntry]
+  private var _lastEntry : Option[KeyMapIndexEntry] = None
 
   private val _blockSize = 1024
 
-  def add(entry: ContextIndexEntry) {
+  def add(entry: KeyMapIndexEntry) {
     _entries.put(entry.key, entry)
     _lastEntry = Some(entry)
   }
@@ -26,7 +24,7 @@ class ContextIndex {
     val blocks = bytes / _blockSize
     val remainder = bytes % _blockSize
 
-    return if (remainder > 0)
+    if (remainder > 0)
       blocks + 1
     else
       blocks
@@ -74,6 +72,8 @@ class ContextIndex {
    * @return A tuple (address,length) both in blocks
    */
   def getRange(key:String) : (Int, Int) = {
+    // @todo: Add error handling for the case that the key doesn't exist
+
     val entry = _entries.get(key).get
     new Tuple2[Int,Int](entry.address,entry.length)
   }
@@ -86,40 +86,5 @@ class ContextIndex {
   def getRangeBytes(key:String) : (Int,Int) = {
     val range = getRange(key)
     new Tuple2[Int,Int](range._1 * _blockSize, range._2 * _blockSize)
-  }
-}
-
-/**
- * Represents a index entry which points to a block in the ContextData.
- * @param key The key as UTF-8 string representation
- * @param address The address of the corresponding entry in the data file in blocks
- * @param length The length of the entry in the data file in blocks
- */
-case class ContextIndexEntry(key:String, address:Int, length : Int) {
-
-  private val _keyUtf8 = key.getBytes("UTF-8")
-
-  def getKeyBytes : Array[Byte] = {
-    _keyUtf8
-  }
-
-  def getKeyLength : Int = {
-    _keyUtf8.length
-  }
-
-  private val _timestamp = Calendar.getInstance.getTime
-
-  def getTimestamp : Date = {
-    _timestamp
-  }
-
-  private var _accessCount = 0
-
-  def getAcessCount : Int = {
-    _accessCount
-  }
-
-  def setAcessCount (accessCount: Int) {
-    _accessCount = accessCount
   }
 }
