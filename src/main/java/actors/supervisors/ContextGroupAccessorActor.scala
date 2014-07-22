@@ -64,10 +64,12 @@ class ContextGroupAccessorActor extends Actor with Requester
               readFromContext(
                 actorRef = contextActorRef,
                 dataKey = x.key,
-                data = (data)
-                  => respond(x, ReadResponse(data, x.key)),
-                error = (ex)
-                  => respond(x, ErrorResponse(ex))
+                data = (data) => {
+                  respond(x, ReadResponse(data, x.key))
+                },
+                error = (ex) => {
+                  respond(x, ErrorResponse(ex))
+                }
               )
             },
             onError = (ex)
@@ -81,10 +83,12 @@ class ContextGroupAccessorActor extends Actor with Requester
                 actorRef = contextActorRef,
                 dataKey = x.key,
                 data = () => x.value,
-                success = ()
-                  => respond(x, WriteResponse()),
-                error = (ex)
-                  => respond(x, ErrorResponse(ex))
+                success = () => {
+                  respond(x, WriteResponse())
+                },
+                error = (ex) => {
+                  respond(x, ErrorResponse(ex))
+                }
               )
             },
             onError = (ex)

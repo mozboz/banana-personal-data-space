@@ -1,7 +1,7 @@
 package actors.supervisors
 
 import actors.behaviors.{Requester, MessageHandler, Request, RequestResponder}
-import actors.workers.LocalContextActor
+import actors.workers.FilesystemContextActor
 import akka.actor.{Props, Actor, ActorRef}
 import akka.event.LoggingReceive
 import events.{ConnectContextBackend, DisconnectContextBackend}
@@ -22,7 +22,7 @@ class ContextActor extends Actor with RequestResponder
   private val _contextBackend = new BufferedResource[String,ActorRef]("ContextBackend")
 
   // @todo: only for testing
-  private val _fsBackendActor = context.actorOf(Props[LocalContextActor], context.self.path.name)
+  private val _fsBackendActor = context.actorOf(Props[FilesystemContextActor], context.self.path.name)
   context.self ! ConnectContextBackend(_fsBackendActor)
 
   def receive = LoggingReceive({
@@ -36,19 +36,31 @@ class ContextActor extends Actor with RequestResponder
 
       case x:ReadFromContext =>
         withContextBackend(
-          (backend) => proxyRequest(x, backend),
+          (backend) => proxyRead(x, backend),
           (exception) => respond(x, ErrorResponse(exception)))
 
       case x:WriteToContext =>
         withContextBackend(
-          (backend) => proxyRequest(x, backend),
+          (backend) => proxyWrite(x, backend),
           (exception) => respond(x, ErrorResponse(exception)))
     })
   })
 
-  private def proxyRequest(request:Request, to:ActorRef) {
-    onResponseOf(request, to, context.self,{
-      case x => respond(request, x)
+  private def proxyRead(request:ReadFromContext, to:ActorRef) {
+    val proxyRequest = ReadFromContext(request.key)
+    onResponseOf(proxyRequest, to, context.self,{
+      case x => {
+        respond(request, x)
+      }
+    })
+  }
+
+  private def proxyWrite(request:WriteToContext, to:ActorRef) {
+    val proxyRequest = WriteToContext(request.key, request.value)
+    onResponseOf(proxyRequest, to, context.self,{
+      case x => {
+        respond(request, x)
+      }
     })
   }
 

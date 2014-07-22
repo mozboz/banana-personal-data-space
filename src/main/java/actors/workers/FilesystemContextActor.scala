@@ -13,7 +13,7 @@ import events.{ConnectFile, DisconnectFile}
 import requests._
 import utils.BufferedResource
 
-class LocalContextActor extends Actor with RequestResponder
+class FilesystemContextActor extends Actor with RequestResponder
                                       with MessageHandler {
 
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
@@ -27,12 +27,15 @@ class LocalContextActor extends Actor with RequestResponder
 
     case x:ConnectFile => _fileChannelResource.set((a,b,c) => b.apply(new RandomAccessFile(x.path, "rw").getChannel))
     case x:DisconnectFile => _fileChannelResource.reset(Some((channel) => channel.close()))
+    // @todo: There should be a way to notify the caller about the failure of the clean-up action (Request/Response?)
 
     case x:Request => handleRequest(x, sender(), {
 
       case x:ReadFromContext =>
         readFromDataFile(x.key,
-          (data) => respond(x, ReadResponse(data, context.self.path.name)),
+          (data) => {
+            respond(x, ReadResponse(data, context.self.path.name))
+          },
           (error) => respond(x, ErrorResponse(error)))
 
 
@@ -44,6 +47,7 @@ class LocalContextActor extends Actor with RequestResponder
           (exception) => respond(x, ErrorResponse(exception))
         )
         // @todo: There should be two types of write response: 'accepted' and 'written'
+        // where the first would be here
         respond(x, WriteResponse())
     })
   })
@@ -83,6 +87,7 @@ class LocalContextActor extends Actor with RequestResponder
 
     val paddedBytes = new Array[Byte](_contextIndex.padBytes(bytes.length))
     val blocks = _contextIndex.pad(paddedBytes.length)
+    val targetAddress = _contextIndex.getNextAddressBytes
 
     val contextIndexEntry = new KeyMapIndexEntry(
       key = key,
@@ -94,7 +99,7 @@ class LocalContextActor extends Actor with RequestResponder
     // @todo: Find a way to avoid array copy (ByteBuffer?)
     bytes.copyToArray(paddedBytes)
 
-    withBuffer(_contextIndex.getNextAddressBytes, paddedBytes.length,
+    withBuffer(targetAddress, paddedBytes.length,
       (buffer) => {
         buffer.put(paddedBytes)
         contextIndexEntry.setProcessed()
@@ -114,7 +119,7 @@ class LocalContextActor extends Actor with RequestResponder
 
     withBuffer(range._1, range._2,
       (buffer) => {
-        val paddedData = new Array[Byte](range._2 - range._1)
+        val paddedData = new Array[Byte](range._2)
         buffer.get(paddedData)
 
         var data : Array[Byte] = null
@@ -129,7 +134,10 @@ class LocalContextActor extends Actor with RequestResponder
           }
         }
 
-        withData(new String(data, "UTF-8"))
+        if (data == null)
+          error(new Exception(""))
+        else
+          withData(new String(data, "UTF-8"))
       },
       (exception) => error(exception)
     )
