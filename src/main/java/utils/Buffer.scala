@@ -1,7 +1,5 @@
 package utils
 
-import actors.behaviors.Resource
-
 import scala.collection.mutable
 
 /**
@@ -9,7 +7,8 @@ import scala.collection.mutable
  * @tparam TKey The type of the resource identifier
  * @tparam TResource The type of the resource
  */
-trait Lazy[TKey,TResource] extends Resource[TResource] {
+//@todo Add timeouts and limits (ringbuffer)
+trait Buffer[TKey,TResource] extends Resource[TResource] {
 
   private val _resourceRequests = new mutable.Queue[((TResource) => Unit, (Exception) => Unit)]
   private val _resource = new ValueContainer[TResource]
@@ -47,10 +46,22 @@ trait Lazy[TKey,TResource] extends Resource[TResource] {
   /**
    * Unloads the resource and forces a reload of the resource on the next enqueued action
    */
-  def reset() {
+  def reset(additionalActions:Option[(TResource) => Unit]) {
     _available.set(false)
     _failState.set(false)
     _initialized.set(false)
+
+    if (additionalActions.isEmpty)
+      return
+
+    additionalActions.get.apply(_resource.get().get)
+  }
+
+  /**
+   * Exposes the initialized state of the resource
+   */
+  def isInitialized : Boolean = {
+    _initialized.get().getOrElse(false)
   }
 
   /**

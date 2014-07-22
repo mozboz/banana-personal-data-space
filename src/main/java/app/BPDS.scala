@@ -4,8 +4,8 @@ package app
 import actors.supervisors.{ContextGroupAccessorActor, ContextGroupOwnerActor, ProfileActor}
 import akka.actor.{ActorRef, Props, ActorSystem}
 import com.typesafe.config.{Config, ConfigFactory}
-import events.{DisconnectContextGroupOwner, PropagateContextGroupOwner, PropagateProfile}
-import requests.{Read, ManageContexts}
+import events.{DisconnectContextGroupOwner, ConnectContextGroupOwner, ConnectProfile}
+import requests.{Write, Read, ManageContexts}
 
 
 object BPDS extends App {
@@ -33,7 +33,7 @@ object BPDS extends App {
   _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
 
   _contextGroupOwner = system.actorOf(Props[ContextGroupOwnerActor], "ContextGroupOwner")
-  _contextGroupOwner ! PropagateProfile(_profileActor)
+  _contextGroupOwner ! ConnectProfile(_profileActor)
 
   _contextGroupAccessor = system.actorOf(Props[ContextGroupAccessorActor], "ContextGroupAccessor")
 
@@ -41,7 +41,7 @@ object BPDS extends App {
                                            "Context7", "Context8", "Context9", "Context10"))
 
 
-  _contextGroupAccessor ! PropagateContextGroupOwner(_contextGroupOwner)
+  _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
   _contextGroupAccessor ! DisconnectContextGroupOwner()
 
   0 to 100 foreach( _ => {
@@ -53,7 +53,7 @@ object BPDS extends App {
     _contextGroupAccessor ! Read("Value1", "Context6")
   })
 
-  _contextGroupAccessor ! PropagateContextGroupOwner(_contextGroupOwner)
+  _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
   _contextGroupAccessor ! DisconnectContextGroupOwner()
 
   0 to 100 foreach( _ => {
@@ -65,5 +65,16 @@ object BPDS extends App {
     _contextGroupAccessor ! Read("Value1", "Context12")
   })
 
-  _contextGroupAccessor ! PropagateContextGroupOwner(_contextGroupOwner)
+  _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
+
+  _contextGroupAccessor ! Write("Key1", "Value1", "Context1")
+  _contextGroupAccessor ! Write("Key1", "Value1", "Context2")
+  _contextGroupAccessor ! Write("Key1", "Value1", "Context3")
+  _contextGroupAccessor ! Write("Key1", "Value1", "Context4")
+
+  _contextGroupAccessor ! Write("Key2", "Value2", "Context1")
+  _contextGroupAccessor ! Write("Key2", "Value3", "Context1")
+  _contextGroupAccessor ! Write("Key2", "Value2", "Context2")
+  _contextGroupAccessor ! Write("Key2", "Value2", "Context3")
+  _contextGroupAccessor ! Write("Key2", "Value2", "Context4")
 }

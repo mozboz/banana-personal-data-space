@@ -1,11 +1,11 @@
 package actors.supervisors
 
 import actors.behaviors.{MessageHandler, Requester, RequestResponder, Request, Response}
-import actors.workers.ContextActor
 import akka.actor.{Props, ActorRef, Actor}
 import akka.event.LoggingReceive
-import events.PropagateProfile
+import events.{DisconnectProfile, ConnectProfile}
 import requests._
+import utils.BufferedResource
 
 import scala.collection.mutable
 
@@ -18,10 +18,13 @@ class ContextGroupOwnerActor extends Actor with Requester
 
   val _managedContexts = new mutable.HashSet[String]
   val _runningContexts = new mutable.HashMap[String,ActorRef]
-  var _profile : ActorRef = null
+
+  var _profileResource = new BufferedResource[String, ActorRef]("Profile")
 
   def receive = LoggingReceive({
-    case x:PropagateProfile =>  _profile = x.profileRef
+    
+    case x:ConnectProfile =>  _profileResource.set((a,loaded,c) => loaded(x.profileRef))
+    case x:DisconnectProfile => _profileResource.reset(None)
 
     case x:Request => handleRequest(x, sender(), {
 
@@ -114,15 +117,20 @@ class ContextGroupOwnerActor extends Actor with Requester
                     error: (Exception) => Unit) {
     contextRunning(
       contextKey = contextKey,
-      yes = (actorRef) => yes(Some[ActorRef](actorRef)),
+      yes = (actorRef) => yes(Some(actorRef)),
       no = () => {
-        onResponseOf(ContextExists(contextKey), _profile, context.self, {
-          case ContextExistsResponse(true) =>
-            yes(None)
-          case ContextExistsResponse(false) =>
-            no()
-          case x: UnexpectedErrorResponse => error(new Exception("Error while checking if context " + contextKey + " exists.", x.ex))
-        })},
+        _profileResource.withResource((profileActorRef) => {
+          onResponseOf(ContextExists(contextKey), profileActorRef, context.self, {
+            case ContextExistsResponse(true) =>
+              yes(None)
+            case ContextExistsResponse(false) =>
+              no()
+            case x: ErrorResponse => error(new Exception("Error while checking if context " + contextKey + " exists.", x.ex))
+          })
+        },
+        (exception) => error(exception))
+
+        },
       error = (ex) => error(ex)
     )
   }

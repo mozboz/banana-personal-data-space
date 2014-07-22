@@ -10,18 +10,18 @@ import scala.collection.mutable
  */
 final class ResourceManager[TKey, TResource](factory: (TKey, (TResource) => Unit, (Exception) => Unit) => Unit) {
 
-  private val _managedResources = new mutable.HashMap[TKey, LazyResource[TKey, TResource]]
+  private val _managedResources = new mutable.HashMap[TKey, BufferedResource[TKey, TResource]]
 
   /**
    * Gets the resource
    * @param resourceKey The resource's key
    */
-  def get(resourceKey: TKey) : LazyResource[TKey, TResource] = {
+  def get(resourceKey: TKey) : BufferedResource[TKey, TResource] = {
 
     if (_managedResources.contains(resourceKey))
       return _managedResources.get(resourceKey).get
 
-    val lazyResource = new LazyResource[TKey, TResource](resourceKey)
+    val lazyResource = new BufferedResource[TKey, TResource](resourceKey)
     lazyResource.set(factory)
 
     _managedResources.put(resourceKey, lazyResource)
@@ -37,7 +37,7 @@ final class ResourceManager[TKey, TResource](factory: (TKey, (TResource) => Unit
     if (!_managedResources.contains(resourceKey))
       throw new Exception("The resource with the key " + resourceKey.toString + " is not managed by this ResourceManager.")
 
-    _managedResources.get(resourceKey).get.reset()
+    _managedResources.get(resourceKey).get.reset(None)
   }
 
   /**

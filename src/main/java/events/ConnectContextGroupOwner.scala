@@ -7,4 +7,4 @@ import akka.actor.ActorRef
  * Propagates the context owner to all involved parties
  * @param contextGroupOwnerRef An ActorRef to the ContextGroupOwner
  */
-case class PropagateContextGroupOwner(contextGroupOwnerRef:ActorRef) extends Event
+case class ConnectContextGroupOwner(contextGroupOwnerRef:ActorRef) extends Event

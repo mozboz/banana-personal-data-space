@@ -3,7 +3,7 @@ package actors.behaviors
 import java.util.UUID
 
 import akka.actor.ActorRef
-import requests.UnexpectedErrorResponse
+import requests.ErrorResponse
 
 import scala.collection.mutable
 
@@ -24,7 +24,7 @@ trait RequestResponder {
       handler.apply(x)
     } catch {
       case e: Exception =>
-        val errorResponse = new UnexpectedErrorResponse(e)
+        val errorResponse = new ErrorResponse(e)
         errorResponse.setRequestId(x.messageId)
         sender ! errorResponse
     }
