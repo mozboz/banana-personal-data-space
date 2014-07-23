@@ -2,12 +2,18 @@ package actors.workers.models
 
 import scala.collection.mutable
 
+/**
+ * Maps a key to a specific position in a file.
+ * @param name The name of the index
+ */
 class KeyMapIndex(name:String) {
+
+  // @todo: Make index persistent
 
   private val _entries = new mutable.HashMap[String, KeyMapIndexEntry]
   private var _lastEntry : Option[KeyMapIndexEntry] = None
 
-  private val _blockSize = 2
+  private val _blockSize = 1 // @todo: evaluate if necessary
 
   def add(entry: KeyMapIndexEntry) {
     if (_entries.contains(entry.key))

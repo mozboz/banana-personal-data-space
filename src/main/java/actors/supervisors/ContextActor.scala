@@ -15,6 +15,7 @@ class ContextActor extends Actor with RequestResponder
                                  with Requester
                                  with MessageHandler {
 
+  // @todo: Implement the metadata stuff
   private val _referencedContexts = new HashSet[String]
   private val _referencedByContexts = new HashSet[String]
   private val _aggregatesContexts = new HashSet[String]
@@ -47,6 +48,7 @@ class ContextActor extends Actor with RequestResponder
   })
 
   private def proxyRead(request:ReadFromContext, to:ActorRef) {
+    // @todo: Here is a problem with the forwarding of the response from the backend context worker to the accessor
     val proxyRequest = ReadFromContext(request.key)
     onResponseOf(proxyRequest, to, context.self,{
       case x => {
@@ -56,6 +58,7 @@ class ContextActor extends Actor with RequestResponder
   }
 
   private def proxyWrite(request:WriteToContext, to:ActorRef) {
+    // @todo: Here is a problem with the forwarding of the response from the backend context worker to the accessor
     val proxyRequest = WriteToContext(request.key, request.value)
     onResponseOf(proxyRequest, to, context.self,{
       case x => {

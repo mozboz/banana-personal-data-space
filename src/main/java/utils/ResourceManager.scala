@@ -43,7 +43,7 @@ final class ResourceManager[TKey, TResource](factory: (TKey, (TResource) => Unit
   /**
    * Gets a Iterable for the resource-keys
    */
-  def keys {
+  def keys() : Iterable[TKey] = {
     _managedResources.keys
   }
 }

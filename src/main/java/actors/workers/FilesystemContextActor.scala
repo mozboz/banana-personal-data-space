@@ -120,9 +120,10 @@ class FilesystemContextActor extends Actor with RequestResponder
     withBuffer(range._1, range._2,
       (buffer) => {
         val paddedData = new Array[Byte](range._2)
+
         buffer.get(paddedData)
 
-        var data : Array[Byte] = null
+        var data = paddedData
 
         // @todo: Find a more elegant way to tell the content size of a block (header?, map of partial blocks?)
         breakable {
@@ -132,11 +133,7 @@ class FilesystemContextActor extends Actor with RequestResponder
               break()
             }
           }
-          data = paddedData
         }
-
-        if (data == null)
-          data = new Array[Byte](0)
 
         withData(new String(data, "UTF-8"))
       },
