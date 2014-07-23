@@ -18,7 +18,7 @@ class FilesystemContextActor extends Actor with RequestResponder
 
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
 
-  private val _contextIndex = new KeyMapIndex
+  private val _contextIndex = new KeyMapIndex(context.self.path.name)
 
   // @todo: only for testing - replace with ConfigurationActor support
   context.self ! ConnectFile("/home/daniel/profileSystem/" + context.self.path.name + ".txt")
@@ -132,12 +132,13 @@ class FilesystemContextActor extends Actor with RequestResponder
               break()
             }
           }
+          data = paddedData
         }
 
         if (data == null)
-          error(new Exception(""))
-        else
-          withData(new String(data, "UTF-8"))
+          data = new Array[Byte](0)
+
+        withData(new String(data, "UTF-8"))
       },
       (exception) => error(exception)
     )

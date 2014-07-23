@@ -2,14 +2,17 @@ package actors.workers.models
 
 import scala.collection.mutable
 
-class KeyMapIndex {
+class KeyMapIndex(name:String) {
 
   private val _entries = new mutable.HashMap[String, KeyMapIndexEntry]
   private var _lastEntry : Option[KeyMapIndexEntry] = None
 
-  private val _blockSize = 1024
+  private val _blockSize = 2
 
   def add(entry: KeyMapIndexEntry) {
+    if (_entries.contains(entry.key))
+      throw new Exception("The key '" + entry.key + "' already exists in index '" + name + "'.")
+
     _entries.put(entry.key, entry)
     _lastEntry = Some(entry)
   }
@@ -72,9 +75,11 @@ class KeyMapIndex {
    * @return A tuple (address,length) both in blocks
    */
   def getRange(key:String) : (Int, Int) = {
-    // @todo: Add error handling for the case that the key doesn't exist
+    val entry = _entries.getOrElse(key, null)
 
-    val entry = _entries.get(key).get
+    if (entry == null)
+      throw new Exception("The key '" + key + "' is not present in index '" + name + "'.")
+
     new Tuple2[Int,Int](entry.address,entry.length)
   }
 
