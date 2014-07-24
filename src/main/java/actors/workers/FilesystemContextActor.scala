@@ -6,7 +6,7 @@ import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
 import actors.behaviors.{Request, MessageHandler, RequestResponder}
-import actors.workers.models.{KeyMapIndexEntry, KeyMapIndex}
+import actors.workers.models.{KeyMapFilesystemPersistence, KeyMapIndexEntry, KeyMapIndex}
 import akka.actor.Actor
 import akka.event.LoggingReceive
 import events.{ConnectFile, DisconnectFile}
@@ -18,16 +18,25 @@ class FilesystemContextActor extends Actor with RequestResponder
 
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
 
-  private val _contextIndex = new KeyMapIndex(context.self.path.name)
+  private var _contextIndex = new KeyMapIndex(context.self.path.name)
 
   // @todo: only for testing - replace with ConfigurationActor support
-  context.self ! ConnectFile("/home/daniel/profileSystem/" + context.self.path.name + ".txt")
+  private val _dataFolder = "/home/daniel/profileSystem/"
+
+  context.self ! ConnectFile(_dataFolder + context.self.path.name + ".txt")
 
   def receive = LoggingReceive({
 
-    case x:ConnectFile => _fileChannelResource.set((a,b,c) => b.apply(new RandomAccessFile(x.path, "rw").getChannel))
-    case x:DisconnectFile => _fileChannelResource.reset(Some((channel) => channel.close()))
+    case x:ConnectFile =>
+      _contextIndex = new KeyMapFilesystemPersistence().load(_dataFolder, context.self.path.name)
+      _fileChannelResource.set((a,b,c) => b.apply(new RandomAccessFile(x.path, "rw").getChannel))
+
+    case x:DisconnectFile =>
+      _fileChannelResource.reset(Some((channel) => channel.close()))
+      new KeyMapFilesystemPersistence().save(_contextIndex, _dataFolder)
     // @todo: There should be a way to notify the caller about the failure of the clean-up action (Request/Response?)
+
+    case x:events.Shutdown => context.self ! DisconnectFile()
 
     case x:Request => handleRequest(x, sender(), {
 

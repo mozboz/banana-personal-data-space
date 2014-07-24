@@ -10,7 +10,15 @@ class KeyMapFilesystemPersistence {
     val index = new KeyMapIndex(indexName)
 
     // @todo: Do proper path handling
-    val file = new RandomAccessFile(folder + indexName, "r")
+    var file : RandomAccessFile = null
+
+    try {
+      file = new RandomAccessFile(folder + indexName, "r")
+    }catch{
+      case x:Exception =>
+        return index
+    }
+
     val channel = file.getChannel
 
     while (channel.position < channel.size) {
@@ -27,7 +35,7 @@ class KeyMapFilesystemPersistence {
   def save(index:KeyMapIndex, folder:String) {
 
     // @todo: Do proper path handling
-    val file = new RandomAccessFile(folder + index.getName, "w")
+    val file = new RandomAccessFile(folder + index.getName, "rw")
     val channel = file.getChannel
 
     index.foreachEntry((entry) => {

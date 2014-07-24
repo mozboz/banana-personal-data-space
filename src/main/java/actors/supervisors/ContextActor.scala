@@ -4,7 +4,7 @@ import actors.behaviors._
 import actors.workers.FilesystemContextActor
 import akka.actor.{Props, Actor, ActorRef}
 import akka.event.LoggingReceive
-import events.{ConnectContextBackend, DisconnectContextBackend}
+import events.{DisconnectFile, ConnectContextBackend, DisconnectContextBackend}
 import requests._
 import utils.BufferedResource
 
@@ -39,6 +39,14 @@ class ContextActor extends Actor with RequestProxy {
 
     case x:ConnectContextBackend => _contextBackend.set((a, loaded, b) => loaded(x.actorRef))
     case x:DisconnectContextBackend => _contextBackend.reset(None)
+
+    case x:events.Shutdown =>
+      _contextBackend.withResource(
+        (actor) => {
+          actor ! x
+          context.self ! DisconnectContextBackend
+        },
+        (ex) => throw ex)
 
     case x:Response => handleResponse(x)
     case x:Request => handleRequest(x, sender(), {

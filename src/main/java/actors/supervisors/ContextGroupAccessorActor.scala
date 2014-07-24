@@ -25,9 +25,7 @@ import utils.{ResourceManager, BufferedResource}
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextGroupAccessorActor extends Actor with Requester
-                                              with RequestResponder
-                                              with MessageHandler {
+class ContextGroupAccessorActor extends Actor with RequestProxy {
 
   /**
    * Represents a future for the context group owner actor. This actor ref is necessary to
@@ -53,6 +51,15 @@ class ContextGroupAccessorActor extends Actor with Requester
 
     case x:ConnectContextGroupOwner =>_lazyContextGroupOwner.set((a, loaded, b) => loaded(x.contextGroupOwnerRef))
     case x:DisconnectContextGroupOwner => _lazyContextGroupOwner.reset(None)
+
+    // @todo: Should be a request as confirmation is required
+    case x:events.Shutdown =>
+      _contextResourceManager.keys().foreach(
+        (key) => _contextResourceManager
+          .get(key)
+          .withResource(
+            (res) => res ! x,
+            (ex) => throw ex))
 
     case x:Response => handleResponse(x)
 

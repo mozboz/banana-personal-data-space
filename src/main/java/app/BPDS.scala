@@ -54,5 +54,6 @@ object BPDS extends App {
   })
 
   _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
+  _contextGroupAccessor ! events.Shutdown()
 
 }
