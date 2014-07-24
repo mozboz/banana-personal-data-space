@@ -3,7 +3,7 @@ package actors.workers.models
 import scala.collection.mutable
 
 /**
- * Maps a key to a specific position in a file.
+ * Maps a key to a specific position in a file. Can be used as a primary key to which other keys can reference.
  * @param name The name of the index
  */
 class KeyMapIndex(name:String) {
@@ -14,6 +14,10 @@ class KeyMapIndex(name:String) {
   private var _lastEntry : Option[KeyMapIndexEntry] = None
 
   private val _blockSize = 1 // @todo: evaluate if necessary
+
+  def getName : String = {
+    name
+  }
 
   def add(entry: KeyMapIndexEntry) {
     if (_entries.contains(entry.key))
@@ -31,9 +35,8 @@ class KeyMapIndex(name:String) {
   def pad(bytes:Int) : Int = {
 
     val blocks = bytes / _blockSize
-    val remainder = bytes % _blockSize
 
-    if (remainder > 0)
+    if (bytes % _blockSize > 0)
       blocks + 1
     else
       blocks
@@ -86,7 +89,7 @@ class KeyMapIndex(name:String) {
     if (entry == null)
       throw new Exception("The key '" + key + "' is not present in index '" + name + "'.")
 
-    new Tuple2[Int,Int](entry.address,entry.length)
+    (entry.address,entry.length)
   }
 
   /**
@@ -96,6 +99,15 @@ class KeyMapIndex(name:String) {
    */
   def getRangeBytes(key:String) : (Int,Int) = {
     val range = getRange(key)
-    new Tuple2[Int,Int](range._1 * _blockSize, range._2 * _blockSize)
+
+    (range._1 * _blockSize, range._2 * _blockSize)
+  }
+
+  /**
+   * Iterates over all index entries.
+   * @param handler The handler
+   */
+  def foreachEntry (handler:(KeyMapIndexEntry) => Unit) {
+    _entries.foreach((a) => handler(a._2))
   }
 }

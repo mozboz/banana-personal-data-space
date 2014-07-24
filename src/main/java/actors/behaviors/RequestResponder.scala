@@ -17,9 +17,6 @@ trait RequestResponder {
   def handleRequest(x: Request, sender:ActorRef, handler: (Request) => (Unit)) {
     try {
       // @todo: Add timeout for the case that the response is never provided
-
-      // @todo: For proxied requests it happens that the response is caught here before it
-      // @todo: can be passed to the proxying function (see also: Requester)
       _pendingResponses.put(x.messageId, (response) => {
         sender ! response
       })

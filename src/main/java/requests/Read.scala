@@ -8,6 +8,6 @@ import actors.behaviors.{Response, Request}
  * @param fromContext The context
  */
 case class Read(key:String, fromContext:String) extends Request
-case class ReadResponse(data:String, from:String) extends Response
+case class ReadResponse(data:String) extends Response
 
 case class ReadFromContext(key:String) extends Request

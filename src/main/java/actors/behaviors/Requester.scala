@@ -23,9 +23,6 @@ trait Requester {
 
   def onResponseOf(message:Message, to:ActorRef, sender:ActorRef, onResponse:(Response) => (Unit)) {
     // @todo: Add timeout for the case that the response is never provided
-
-    // @todo: This will not work for proxied messages as the RequestResponder on the actor will catch the
-    // @todo: response to the proxied message before it can be passed into the onResponse continuation
     _pendingRequests.put(message.messageId, (x) =>  {
       onResponse.apply(x)
       true

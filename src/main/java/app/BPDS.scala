@@ -40,15 +40,6 @@ object BPDS extends App {
   _contextGroupOwner ! ManageContexts(List("Context1", "Context2", "Context3"))
 
 
-  _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
-  _contextGroupAccessor ! DisconnectContextGroupOwner()
-
-
-  _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
-
-
-  _contextGroupAccessor ! Read("Key1", "Context1")
-
   _contextGroupAccessor ! Write("Key1", "Value1", "Context1")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context1")
   _contextGroupAccessor ! Write("Key3", "Value3", "Context1")
@@ -61,4 +52,7 @@ object BPDS extends App {
     _contextGroupAccessor ! Read("Key3", "Context1")
     _contextGroupAccessor ! Read("Key4", "Context1")
   })
+
+  _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
+
 }

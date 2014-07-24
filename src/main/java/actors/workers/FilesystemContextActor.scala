@@ -34,7 +34,7 @@ class FilesystemContextActor extends Actor with RequestResponder
       case x:ReadFromContext =>
         readFromDataFile(x.key,
           (data) => {
-            respond(x, ReadResponse(data, context.self.path.name))
+            respond(x, ReadResponse(data))
           },
           (error) => respond(x, ErrorResponse(error)))
 

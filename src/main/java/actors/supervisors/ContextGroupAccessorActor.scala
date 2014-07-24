@@ -27,7 +27,7 @@ import utils.{ResourceManager, BufferedResource}
  */
 class ContextGroupAccessorActor extends Actor with Requester
                                               with RequestResponder
-                                              with MessageHandler{
+                                              with MessageHandler {
 
   /**
    * Represents a future for the context group owner actor. This actor ref is necessary to
@@ -65,7 +65,7 @@ class ContextGroupAccessorActor extends Actor with Requester
                 actorRef = contextActorRef,
                 dataKey = x.key,
                 data = (data) => {
-                  respond(x, ReadResponse(data, x.key))
+                  respond(x, ReadResponse(data))
                 },
                 error = (ex) => {
                   respond(x, ErrorResponse(ex))
