@@ -2,13 +2,19 @@ package actors.workers.models
 
 import scala.collection.mutable
 
+
+// @todo: Improve the index:
+// * implement as linked list (helps to maintain the sort order without
+//   moving large parts of the data on insert. New entries can be just appended.
+// * Use this class as frontend and create a corresponding backend which
+//   operates on memory-mapped-files for large indexes.
+
+
 /**
  * Maps a key to a specific position in a file. Can be used as a primary key to which other keys can reference.
  * @param name The name of the index
  */
 class KeyMapIndex(name:String) {
-
-  // @todo: Make index persistent
 
   private val _entries = new mutable.HashMap[String, KeyMapIndexEntry]
   private var _lastEntry : Option[KeyMapIndexEntry] = None
@@ -34,6 +40,9 @@ class KeyMapIndex(name:String) {
    */
   def pad(bytes:Int) : Int = {
 
+    if (_blockSize == 1)
+      return bytes
+
     val blocks = bytes / _blockSize
 
     if (bytes % _blockSize > 0)
@@ -48,6 +57,10 @@ class KeyMapIndex(name:String) {
    * @return The padded number of bytes
    */
   def padBytes(bytes:Int) : Int = {
+
+    if (_blockSize == 1)
+      return bytes
+
     if (bytes <= _blockSize)
       _blockSize
     else

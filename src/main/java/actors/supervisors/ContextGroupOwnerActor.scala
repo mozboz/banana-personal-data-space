@@ -26,6 +26,8 @@ class ContextGroupOwnerActor extends Actor with Requester
     case x:ConnectProfile =>  _profileResource.set((a,loaded,c) => loaded(x.profileRef))
     case x:DisconnectProfile => _profileResource.reset(None)
 
+    case x:events.Shutdown => _runningContexts.foreach((a) => a._2 ! x) // @todo: Remove from _runningContexts when stopped (request/response for shutdown)
+
     case x:Request => handleRequest(x, sender(), {
 
         case x: ManageContexts =>

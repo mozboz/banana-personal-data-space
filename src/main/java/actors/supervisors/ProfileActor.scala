@@ -10,6 +10,9 @@ class ProfileActor extends Actor with Requester
                                  with MessageHandler {
 
   def receive = {
+
+    case x:events.Shutdown => // @todo: implement!
+
     case x:Response => handleResponse(x)
     case x:Request => handleRequest(x,sender(),{
       case x:ContextExists =>
