@@ -21,6 +21,11 @@ class KeyMapIndex(name:String) {
 
   private val _blockSize = 1 // @todo: evaluate if necessary
 
+
+  def getBlockSize : Int = {
+    _blockSize
+  }
+
   def getName : String = {
     name
   }

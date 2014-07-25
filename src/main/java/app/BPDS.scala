@@ -1,10 +1,10 @@
 package app
 
 
-import actors.supervisors.{ContextGroupAccessorActor, ContextGroupOwnerActor, ProfileActor}
-import akka.actor.{ActorRef, Props, ActorSystem}
+import actors.supervisors.{ConfigurationActor, ContextGroupAccessorActor, ContextGroupOwnerActor, ProfileActor}
+import akka.actor.{Props, ActorSystem}
 import com.typesafe.config.{Config, ConfigFactory}
-import events.{DisconnectContextGroupOwner, ConnectContextGroupOwner, ConnectProfile}
+import events.{Startup, ConnectContextGroupOwner, ConnectProfile}
 import requests.{Write, Read, ManageContexts}
 
 
@@ -24,21 +24,23 @@ object BPDS extends App {
   implicit val system = ActorSystem("ProfileSystem", config)
 
 
-  var _profileActor : ActorRef = null
-  var _contextGroupOwner : ActorRef = null
-  var _contextGroupAccessor : ActorRef = null
+  // @todo: Create a model of the actors and their possible connections (in terms of exchanging messages)
+  //        so that messages can be broadcasted more easily. For instance Startup and Shutdown
 
-  
+  val _configurationActor = system.actorOf(Props[ConfigurationActor], "ConfigurationActor")
+  val _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
 
-  _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
+  _profileActor ! Startup(_configurationActor)
 
-  _contextGroupOwner = system.actorOf(Props[ContextGroupOwnerActor], "ContextGroupOwner")
+  val _contextGroupOwner = system.actorOf(Props[ContextGroupOwnerActor], "ContextGroupOwner")
   _contextGroupOwner ! ConnectProfile(_profileActor)
+  _contextGroupOwner ! Startup(_configurationActor)
 
-  _contextGroupAccessor = system.actorOf(Props[ContextGroupAccessorActor], "ContextGroupAccessor")
+  val _contextGroupAccessor = system.actorOf(Props[ContextGroupAccessorActor], "ContextGroupAccessor")
   _contextGroupOwner ! ManageContexts(List("Context1", "Context2", "Context3"))
 
   _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
+  _contextGroupAccessor ! Startup(_configurationActor)
 
   _contextGroupAccessor ! Write("Key1", "Value1", "Context1")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context1")

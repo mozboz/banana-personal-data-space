@@ -1,31 +1,42 @@
 package actors.workers
 
+import requests.config.{GetContextDataFilePathResponse, GetContextDataFilePath}
+
 import scala.util.control.Breaks._
 import java.io.RandomAccessFile
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
-import actors.behaviors.{Request, MessageHandler, RequestResponder}
+import actors.behaviors.{Requester, Request, MessageHandler, RequestResponder}
 import actors.workers.models.{KeyMapFilesystemPersistence, KeyMapIndexEntry, KeyMapIndex}
-import akka.actor.Actor
+import akka.actor.{ActorRef, Actor}
 import akka.event.LoggingReceive
-import events.{ConnectFile, DisconnectFile}
+import events.{Startup, ConnectFile, DisconnectFile}
 import requests._
 import utils.BufferedResource
 
-class FilesystemContextActor extends Actor with RequestResponder
-                                      with MessageHandler {
+class FilesystemContextActor extends Actor with Requester
+                                           with RequestResponder
+                                           with MessageHandler {
 
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
 
   private var _contextIndex = new KeyMapIndex(context.self.path.name)
-
-  // @todo: only for testing - replace with ConfigurationActor support
-  private val _dataFolder = "/home/daniel/profileSystem/"
+  private var _configActorRef : ActorRef = null
+  private var _dataFolder = ""
 
   context.self ! ConnectFile(_dataFolder + context.self.path.name + ".txt")
 
   def receive = LoggingReceive({
+
+    // @todo: Make Startup a request and respond when everything is set up
+    // @todo: Alternatively queue all requests to the actor until it is set up. ??? unreliable?!
+    case x:Startup =>
+      _configActorRef = x.configActor
+      onResponseOf(new GetContextDataFilePath(context.self.path.name), _configActorRef, context.self, {
+        case x:GetContextDataFilePathResponse => _dataFolder = x.path
+        case x:ErrorResponse => throw x.ex
+      })
 
     case x:ConnectFile =>
       _contextIndex = new KeyMapFilesystemPersistence().load(_dataFolder, context.self.path.name)
@@ -36,7 +47,7 @@ class FilesystemContextActor extends Actor with RequestResponder
       new KeyMapFilesystemPersistence().save(_contextIndex, _dataFolder)
     // @todo: There should be a way to notify the caller about the failure of the clean-up action (Request/Response?)
 
-    case x:events.Shutdown => context.self ! DisconnectFile()
+    case x:events.Shutdown => context.self ! DisconnectFile() // @todo: Make Shutdown use request/response
 
     case x:Request => handleRequest(x, sender(), {
 
@@ -88,9 +99,9 @@ class FilesystemContextActor extends Actor with RequestResponder
    * @return A index entry
    */
   private def appendToDataFile(key:String,
-                       data:String,
-                       indexEntry: (KeyMapIndexEntry) => Unit,
-                       error: (Exception) => Unit) {
+                               data:String,
+                               indexEntry: (KeyMapIndexEntry) => Unit,
+                               error: (Exception) => Unit) {
 
     val bytes = data.getBytes("UTF-8")
 
@@ -105,12 +116,17 @@ class FilesystemContextActor extends Actor with RequestResponder
 
     indexEntry(contextIndexEntry)
 
-    // @todo: Find a way to avoid array copy (ByteBuffer?)
-    bytes.copyToArray(paddedBytes)
+    if (_contextIndex.getBlockSize != 1)
+      // @todo: Find a way to avoid array copy (ByteBuffer?)
+      bytes.copyToArray(paddedBytes)
 
     withBuffer(targetAddress, paddedBytes.length,
       (buffer) => {
-        buffer.put(paddedBytes)
+        if (_contextIndex.getBlockSize != 1) // @todo: Is there something for what I would need the blocks? throw it out?!
+          buffer.put(paddedBytes)
+        else
+          buffer.put(bytes)
+
         contextIndexEntry.setProcessed()
       },
       // @todo: Provide simple mechanism to wrap the exception with some information about the current method
@@ -134,12 +150,14 @@ class FilesystemContextActor extends Actor with RequestResponder
 
         var data = paddedData
 
-        // @todo: Find a more elegant way to tell the content size of a block (header?, map of partial blocks?)
-        breakable {
-          for ((x, i) <- paddedData.view.zipWithIndex) {
-            if (x == 0) {
-              data = paddedData.slice(0, i)
-              break()
+        if (_contextIndex.getBlockSize != 1) {
+          // @todo: Find a more elegant way to tell the content size of a block (header?, map of partial blocks?)
+          breakable {
+            for ((x, i) <- paddedData.view.zipWithIndex) {
+              if (x == 0) {
+                data = paddedData.slice(0, i)
+                break()
+              }
             }
           }
         }
