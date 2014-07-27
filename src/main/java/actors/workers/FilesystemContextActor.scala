@@ -16,8 +16,7 @@ import requests._
 import utils.BufferedResource
 
 class FilesystemContextActor extends Actor with Requester
-                                           with MessageHandler
-                                           /*with RequiresSetup*/ {
+                                           with MessageHandler {
 
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
 
@@ -29,50 +28,57 @@ class FilesystemContextActor extends Actor with Requester
 
   def doSetup(x:Setup) {
     _configActorRef = x.configActor
-    onResponseOf(new GetContextDataFilePath(context.self.path.name), _configActorRef, context.self, {
+    onResponseOf(new GetContextDataFilePath(context.self.path.name), _configActorRef, sender(), {
       case x:GetContextDataFilePathResponse => _dataFolder = x.path
       case x:ErrorResponse => throw x.ex
     })
   }
 
   def receive = LoggingReceive({
-
-    // case x:Setup => handleSetup(x)
-
-    case x:ConnectFile =>
-      _contextIndex = new KeyMapFilesystemPersistence().load(_dataFolder, context.self.path.name)
-      _fileChannelResource.set((a,b,c) => b.apply(new RandomAccessFile(x.path, "rw").getChannel))
-
-    case x:DisconnectFile =>
-      _fileChannelResource.reset(Some((channel) => channel.close()))
-      new KeyMapFilesystemPersistence().save(_contextIndex, _dataFolder)
-    // @todo: There should be a way to notify the caller about the failure of the clean-up action (Request/Response?)
-
-    case x:Shutdown => context.self ! DisconnectFile() // @todo: Make Shutdown use request/response
-
-    //case x:Request => handleRequest(x, sender(), {
-
-      case x:ReadFromContext =>
-        readFromDataFile(x.key,
-          (data) => {
-            sender ! ReadResponse(x, data)
-          },
-          (error) => sender ! ErrorResponse(x, error))
-
-
-      case x:WriteToContext =>
-        appendToDataFile(x.key, x.value,
-          (indexEntry) => _contextIndex.add(indexEntry),
-          // @todo: There should be two types of write response: 'accepted' and 'written'
-          // the last should be sent here 'whenWritten'
-          (exception) => sender ! ErrorResponse(x, exception)
-        )
-        // @todo: There should be two types of write response: 'accepted' and 'written'
-        // where the first would be here
-        sender ! WriteResponse(x)
-    //}
-  //)
+    case x:Setup => handleSetup(sender(), x)
+    case x:ConnectFile => handleConnectFile(sender(), x)
+    case x:DisconnectFile => handleDisconnectFile(sender(), x)
+    case x:Shutdown => handleShutdown(sender(), x)
+    case x:ReadFromContext => handleReadFromContext(sender(), x)
+    case x:WriteToContext => handleWriteToContext(sender(), x)
   })
+
+  private def handleSetup(sender:ActorRef, message:Setup) {
+    // @todo: !! Rebuild Setup handling
+  }
+
+  private def handleConnectFile(sender:ActorRef, message:ConnectFile) {
+    _contextIndex = new KeyMapFilesystemPersistence().load(_dataFolder, context.self.path.name)
+    _fileChannelResource.set((a,b,c) => b.apply(new RandomAccessFile(message.path, "rw").getChannel))
+  }
+
+  private def handleDisconnectFile(sender:ActorRef, message:DisconnectFile) {
+    _fileChannelResource.reset(Some((channel) => channel.close()))
+    new KeyMapFilesystemPersistence().save(_contextIndex, _dataFolder)
+    // @todo: There should be a way to notify the caller about the failure of the clean-up action (Request/Response?)
+  }
+
+  private def handleShutdown(sender:ActorRef, message:Shutdown) {
+    self ! DisconnectFile() // @todo: Make Shutdown use request/response
+  }
+
+  private def handleReadFromContext(sender:ActorRef, message:ReadFromContext) {
+    readFromDataFile(message.key,
+      (data) => sender ! ReadResponse(message, data),
+      (error) => sender ! ErrorResponse(message, error))
+  }
+
+  def handleWriteToContext(sender:ActorRef, message:WriteToContext) {
+    appendToDataFile(message.key, message.value,
+      (indexEntry) => _contextIndex.add(indexEntry),
+      // @todo: There should be two types of write response: 'accepted' and 'written'
+      // the last should be sent here 'whenWritten'
+      (exception) => sender ! ErrorResponse(message, exception)
+    )
+    // @todo: There should be two types of write response: 'accepted' and 'written'
+    // where the first would be here
+    sender ! WriteResponse(message)
+  }
 
   /**
    * Uses the actor's _fileChannelResource to create a MappedByteBuffer which is then

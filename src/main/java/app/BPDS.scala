@@ -44,23 +44,15 @@ object BPDS extends App {
 
   _contextGroupAccessor ! Write("Key1", "Value1", "Context1")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context1")
-  _contextGroupAccessor ! Write("Key3", "Value3", "Context1")
-  _contextGroupAccessor ! Write("Key4", "Value4", "Context1")
 
   _contextGroupAccessor ! Write("Key1", "Value1", "Context2")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context2")
-  _contextGroupAccessor ! Write("Key3", "Value3", "Context2")
 
+  _contextGroupAccessor ! Read("Key1", "Context1")
+  _contextGroupAccessor ! Read("Key2", "Context1")
 
-  0 to 10 foreach( _ => {
-    _contextGroupAccessor ! Read("Key1", "Context1")
-    _contextGroupAccessor ! Read("Key2", "Context1")
-    _contextGroupAccessor ! Read("Key3", "Context1")
-    _contextGroupAccessor ! Read("Key4", "Context1")
-    _contextGroupAccessor ! Read("Key1", "Context2")
-    _contextGroupAccessor ! Read("Key2", "Context2")
-    _contextGroupAccessor ! Read("Key3", "Context2")
-  })
+  _contextGroupAccessor ! Read("Key1", "Context2")
+  _contextGroupAccessor ! Read("Key2", "Context2")
 
   _contextGroupOwner ! Shutdown()
 

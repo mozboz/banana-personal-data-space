@@ -4,7 +4,7 @@ import actors.behaviors._
 import actors.workers.FilesystemContextActor
 import akka.actor.{Props, Actor, ActorRef}
 import akka.event.LoggingReceive
-import events.{DisconnectFile, ConnectContextBackend, DisconnectContextBackend}
+import events.{ConnectContextBackend, DisconnectContextBackend}
 import requests._
 import utils.BufferedResource
 
@@ -21,7 +21,7 @@ import scala.collection.immutable.HashSet
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextActor extends Actor with Requester {
+class ContextActor extends Actor with Requester with Proxy {
 
   // @todo: Implement aggregation
   // @todo: Implement the metadata stuff
@@ -37,37 +37,45 @@ class ContextActor extends Actor with Requester {
 
   def receive = LoggingReceive(handleResponse orElse {
 
-    case x:ConnectContextBackend => _contextBackend.set((a, loaded, b) => loaded(x.actorRef))
-    case x:DisconnectContextBackend => _contextBackend.reset(None)
-
-    case x:Shutdown =>
-      _contextBackend.withResource(
-        (actor) => {
-          actor ! x
-          context.self ! DisconnectContextBackend
-        },
-        (ex) => throw ex)
-
-    //case x:Response => handleResponse(x)
-    //case x:Request => handleRequest(x, sender(), {
-
-      case x:AggregateRequest =>
-
-      case x:ReadFromContext =>
-        withContextBackend(
-          (backend) => proxy(x, backend, context.self),
-          (exception) => sender ! ErrorResponse(x, exception))
-
-      case x:WriteToContext =>
-        withContextBackend(
-          (backend) => proxy(x, backend, context.self),
-          (exception) => sender ! ErrorResponse(x, exception))
-    //})
+    case x:ConnectContextBackend => handleConnectContextBackend(sender(), x)
+    case x:DisconnectContextBackend => handleDisconnectContextBackend(sender(), x)
+    case x:Shutdown => handleShutdown(sender(), x)
+    case x:AggregateRequest => handleAggregateRequest(sender(), x)
+    case x:ReadFromContext => handleReadFromContext(sender(), x)
+    case x:WriteToContext => handleWriteToContext(sender(), x)
   })
 
-  private def proxy(x:Any,y:Any,z:Any) {
-    // @todo: Dummy
-    throw new Exception("This is only a dummy!");
+  private def handleConnectContextBackend(sender:ActorRef, message:ConnectContextBackend) {
+    _contextBackend.set((a, loaded, b) => loaded(message.actorRef))
+  }
+
+  private def handleDisconnectContextBackend(sender:ActorRef, message:DisconnectContextBackend) {
+    _contextBackend.reset(None)
+  }
+
+  private def handleShutdown(sender:ActorRef, message:Shutdown) {
+    _contextBackend.withResource(
+      (actor) => {
+        actor ! message
+        context.self ! DisconnectContextBackend
+      },
+      (ex) => throw ex)
+  }
+
+  private def handleAggregateRequest(sender:ActorRef, message:AggregateRequest) {
+    // @todo: Build context aggregation
+  }
+
+  private def handleReadFromContext(sender:ActorRef, message:ReadFromContext) {
+    withContextBackend(
+      (backend) => proxy(message, backend, sender),
+      (exception) => sender ! ErrorResponse(message, exception))
+  }
+
+  private def handleWriteToContext(sender:ActorRef, message:WriteToContext) {
+    withContextBackend(
+      (backend) => proxy(message, backend, sender),
+      (exception) => sender ! ErrorResponse(message, exception))
   }
 
   private def withContextBackend (withContextBackend : (ActorRef) => Unit,
