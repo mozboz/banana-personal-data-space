@@ -14,11 +14,11 @@ trait Requester {
 
   def handleResponse(x:Response) {
     val processed = _pendingRequests
-      .getOrElse(x.requestId, (x:Response) => false)
+      .getOrElse(x.getRequestId(), (x:Response) => false)
       .apply(x)
 
     if (processed)
-      _pendingRequests.remove(x.requestId)
+      _pendingRequests.remove(x.getRequestId())
   }
 
   def onResponseOf(message:Message, to:ActorRef, sender:ActorRef, onResponse:(Response) => (Unit)) {

@@ -7,4 +7,4 @@ import actors.behaviors.{Response, Request}
  * @param context The name of the context to check
  */
 case class ContextExists(context:String) extends Request
-case class ContextExistsResponse(exists:Boolean) extends Response
+case class ContextExistsResponse(request:Request, exists:Boolean) extends Response(request.messageId)

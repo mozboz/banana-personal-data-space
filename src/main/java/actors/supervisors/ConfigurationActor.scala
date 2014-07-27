@@ -11,7 +11,8 @@ class ConfigurationActor extends Actor with RequestResponder
 
   def receive = {
     case x:Request => handleRequest(x, context.self, {
-      case x:GetContextDataFilePath => respond(x, GetContextDataFilePathResponse(_dataFolder + x.contextKey))
+      case x:GetContextDataFilePath =>
+        respond(x, GetContextDataFilePathResponse(x, _dataFolder))
     })
   }
 }

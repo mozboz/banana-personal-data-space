@@ -53,7 +53,7 @@ class ContextGroupAccessorActor extends Actor with RequestProxy {
     case x:DisconnectContextGroupOwner => _lazyContextGroupOwner.reset(None)
 
     // @todo: Should be a request as confirmation is required
-    case x:events.Shutdown =>
+    case x:Shutdown =>
       _contextResourceManager.keys().foreach(
         (key) => _contextResourceManager
           .get(key)
@@ -72,15 +72,15 @@ class ContextGroupAccessorActor extends Actor with RequestProxy {
                 actorRef = contextActorRef,
                 dataKey = x.key,
                 data = (data) => {
-                  respond(x, ReadResponse(data))
+                  respond(x, ReadResponse(x, data))
                 },
                 error = (ex) => {
-                  respond(x, ErrorResponse(ex))
+                  respond(x, ErrorResponse(x, ex))
                 }
               )
             },
             onError = (ex)
-              => respond(x, ErrorResponse(ex))
+              => respond(x, ErrorResponse(x, ex))
         )
 
         case x: Write =>
@@ -91,15 +91,15 @@ class ContextGroupAccessorActor extends Actor with RequestProxy {
                 dataKey = x.key,
                 data = () => x.value,
                 success = () => {
-                  respond(x, WriteResponse())
+                  respond(x, WriteResponse(x))
                 },
                 error = (ex) => {
-                  respond(x, ErrorResponse(ex))
+                  respond(x, ErrorResponse(x, ex))
                 }
               )
             },
             onError = (ex)
-              => respond(x, ErrorResponse(ex))
+              => respond(x, ErrorResponse(x, ex))
         )})
   })
 

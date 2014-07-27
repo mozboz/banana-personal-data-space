@@ -24,14 +24,18 @@ trait RequestResponder {
       handler.apply(x)
     } catch {
       case e: Exception =>
-        val errorResponse = new ErrorResponse(e)
-        errorResponse.setRequestId(x.messageId)
+        val errorResponse = new ErrorResponse(x, e)
+        //errorResponse.setRequestId(x.messageId)
         sender ! errorResponse
     }
   }
 
+  def respondDirectly(x:Request, y:Response) {
+
+  }
+
   def respond(x:Request, y:Response) {
-    y.setRequestId(x.messageId)
+    //y.setRequestId(x.messageId)
     _pendingResponses.get(x.messageId).get.apply(y)
     _pendingResponses.remove(x.messageId)
   }

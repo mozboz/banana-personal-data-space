@@ -40,7 +40,7 @@ class ContextActor extends Actor with RequestProxy {
     case x:ConnectContextBackend => _contextBackend.set((a, loaded, b) => loaded(x.actorRef))
     case x:DisconnectContextBackend => _contextBackend.reset(None)
 
-    case x:events.Shutdown =>
+    case x:Shutdown =>
       _contextBackend.withResource(
         (actor) => {
           actor ! x
@@ -56,12 +56,12 @@ class ContextActor extends Actor with RequestProxy {
       case x:ReadFromContext =>
         withContextBackend(
           (backend) => proxy(x, backend, context.self),
-          (exception) => respond(x, ErrorResponse(exception)))
+          (exception) => respond(x, ErrorResponse(x, exception)))
 
       case x:WriteToContext =>
         withContextBackend(
           (backend) => proxy(x, backend, context.self),
-          (exception) => respond(x, ErrorResponse(exception)))
+          (exception) => respond(x, ErrorResponse(x, exception)))
     })
   })
 

@@ -1,5 +1,7 @@
 package requests
 
+import java.util.UUID
+
 import actors.behaviors.{Response, Request}
 
 /**
@@ -7,4 +9,4 @@ import actors.behaviors.{Response, Request}
  * @param contexts The keys of the contexts
  */
 case class ManageContexts(contexts:List[String]) extends Request
-case class ManageContextsResponse(accepted:List[String]) extends Response
+case class ManageContextsResponse(request:Request, accepted:List[String]) extends Response(request.messageId)

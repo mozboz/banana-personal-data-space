@@ -20,32 +20,40 @@ class ContextGroupOwnerActor extends Actor with Requester
   val _runningContexts = new mutable.HashMap[String,ActorRef]
 
   var _profileResource = new BufferedResource[String, ActorRef]("Profile")
+  var _configActor : ActorRef = null
 
   def receive = LoggingReceive({
     
     case x:ConnectProfile =>  _profileResource.set((a,loaded,c) => loaded(x.profileRef))
     case x:DisconnectProfile => _profileResource.reset(None)
 
-    case x:events.Shutdown => _runningContexts.foreach((a) => a._2 ! x) // @todo: Remove from _runningContexts when stopped (request/response for shutdown)
+    case x:Setup => _configActor = x.configActor
+    case x:Shutdown => _runningContexts.foreach((a) => a._2 ! x) // @todo: Remove from _runningContexts when stopped (request/response for shutdown)
+
+    case x:ManageContexts =>
+      x.contexts.foreach((contextKey) => _managedContexts.add(contextKey))
+      respond(x, ManageContextsResponse(x, x.contexts))
 
     case x:Request => handleRequest(x, sender(), {
 
-        case x: ManageContexts =>
+      /*  case x: ManageContexts =>
           x.contexts.foreach((contextKey) => _managedContexts.add(contextKey))
           respond(x, ManageContextsResponse(x.contexts))
-
+*/
         case x: ReleaseContexts =>
           // @todo: implement release contexts
 
         case x: SpawnContext =>
           spawnContext(x.context,
-            (actorRef) => respond(x, SpawnContextResponse(actorRef)),
+            (actorRef) =>
+              //actorRef ! // @todo: Send the configuration to the actor (as event?!)
+              respond(x, SpawnContextResponse(x, actorRef)),
             (exception) => throwExFromMessage(x, "Error while starting the context " + x.context + "." + exception.toString))
 
         case x: ContextExists =>
           contextExists(x.context,
-            (actorRefOption) => respond(x, ContextExistsResponse(exists = true)),
-            () => respond(x, ContextExistsResponse(exists = false)),
+            (actorRefOption) => respond(x, ContextExistsResponse(x, exists = true)),
+            () => respond(x, ContextExistsResponse(x, exists = false)),
             (exception) => throwExFromMessage(x, "Error while checking if context " + x.context + " exists: " + exception))
       })
 
@@ -123,9 +131,9 @@ class ContextGroupOwnerActor extends Actor with Requester
       no = () => {
         _profileResource.withResource((profileActorRef) => {
           onResponseOf(ContextExists(contextKey), profileActorRef, context.self, {
-            case ContextExistsResponse(true) =>
+            case ContextExistsResponse(x, true) =>
               yes(None)
-            case ContextExistsResponse(false) =>
+            case ContextExistsResponse(x, false) =>
               no()
             case x: ErrorResponse => error(new Exception("Error while checking if context " + contextKey + " exists.", x.ex))
           })

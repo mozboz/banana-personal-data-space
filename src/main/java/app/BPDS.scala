@@ -4,8 +4,8 @@ package app
 import actors.supervisors.{ConfigurationActor, ContextGroupAccessorActor, ContextGroupOwnerActor, ProfileActor}
 import akka.actor.{Props, ActorSystem}
 import com.typesafe.config.{Config, ConfigFactory}
-import events.{Startup, ConnectContextGroupOwner, ConnectProfile}
-import requests.{Write, Read, ManageContexts}
+import events.{ConnectContextGroupOwner, ConnectProfile}
+import requests._
 
 
 object BPDS extends App {
@@ -30,17 +30,17 @@ object BPDS extends App {
   val _configurationActor = system.actorOf(Props[ConfigurationActor], "ConfigurationActor")
   val _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
 
-  _profileActor ! Startup(_configurationActor)
+  _profileActor ! Setup(_configurationActor)
 
   val _contextGroupOwner = system.actorOf(Props[ContextGroupOwnerActor], "ContextGroupOwner")
   _contextGroupOwner ! ConnectProfile(_profileActor)
-  _contextGroupOwner ! Startup(_configurationActor)
+  _contextGroupOwner ! Setup(_configurationActor)
 
   val _contextGroupAccessor = system.actorOf(Props[ContextGroupAccessorActor], "ContextGroupAccessor")
   _contextGroupOwner ! ManageContexts(List("Context1", "Context2", "Context3"))
 
   _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
-  _contextGroupAccessor ! Startup(_configurationActor)
+  _contextGroupAccessor ! Setup(_configurationActor)
 
   _contextGroupAccessor ! Write("Key1", "Value1", "Context1")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context1")
@@ -62,6 +62,6 @@ object BPDS extends App {
     _contextGroupAccessor ! Read("Key3", "Context2")
   })
 
-  _contextGroupOwner ! events.Shutdown()
+  _contextGroupOwner ! Shutdown()
 
 }

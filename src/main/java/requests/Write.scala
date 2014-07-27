@@ -9,6 +9,6 @@ import actors.behaviors.{Response, Request}
  * @param toContext The context
  */
 case class Write(key:String, value:String, toContext:String) extends Request
-case class WriteResponse() extends Response
+case class WriteResponse(request:Request) extends Response(request.messageId)
 
 case class WriteToContext(key:String, value:String) extends Request

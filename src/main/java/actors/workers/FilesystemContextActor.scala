@@ -7,17 +7,18 @@ import java.io.RandomAccessFile
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
-import actors.behaviors.{Requester, Request, MessageHandler, RequestResponder}
+import actors.behaviors._
 import actors.workers.models.{KeyMapFilesystemPersistence, KeyMapIndexEntry, KeyMapIndex}
 import akka.actor.{ActorRef, Actor}
 import akka.event.LoggingReceive
-import events.{Startup, ConnectFile, DisconnectFile}
+import events.{ConnectFile, DisconnectFile}
 import requests._
 import utils.BufferedResource
 
 class FilesystemContextActor extends Actor with Requester
                                            with RequestResponder
-                                           with MessageHandler {
+                                           with MessageHandler
+                                           with RequiresSetup {
 
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
 
@@ -27,16 +28,17 @@ class FilesystemContextActor extends Actor with Requester
 
   context.self ! ConnectFile(_dataFolder + context.self.path.name + ".txt")
 
+  def doSetup(x:Setup) {
+    _configActorRef = x.configActor
+    onResponseOf(new GetContextDataFilePath(context.self.path.name), _configActorRef, context.self, {
+      case x:GetContextDataFilePathResponse => _dataFolder = x.path
+      case x:ErrorResponse => throw x.ex
+    })
+  }
+
   def receive = LoggingReceive({
 
-    // @todo: Make Startup a request and respond when everything is set up
-    // @todo: Alternatively queue all requests to the actor until it is set up. ??? unreliable?!
-    case x:Startup =>
-      _configActorRef = x.configActor
-      onResponseOf(new GetContextDataFilePath(context.self.path.name), _configActorRef, context.self, {
-        case x:GetContextDataFilePathResponse => _dataFolder = x.path
-        case x:ErrorResponse => throw x.ex
-      })
+    case x:Setup => handleSetup(x)
 
     case x:ConnectFile =>
       _contextIndex = new KeyMapFilesystemPersistence().load(_dataFolder, context.self.path.name)
@@ -47,16 +49,16 @@ class FilesystemContextActor extends Actor with Requester
       new KeyMapFilesystemPersistence().save(_contextIndex, _dataFolder)
     // @todo: There should be a way to notify the caller about the failure of the clean-up action (Request/Response?)
 
-    case x:events.Shutdown => context.self ! DisconnectFile() // @todo: Make Shutdown use request/response
+    case x:Shutdown => context.self ! DisconnectFile() // @todo: Make Shutdown use request/response
 
     case x:Request => handleRequest(x, sender(), {
 
       case x:ReadFromContext =>
         readFromDataFile(x.key,
           (data) => {
-            respond(x, ReadResponse(data))
+            respond(x, ReadResponse(x, data))
           },
-          (error) => respond(x, ErrorResponse(error)))
+          (error) => respond(x, ErrorResponse(x, error)))
 
 
       case x:WriteToContext =>
@@ -64,11 +66,11 @@ class FilesystemContextActor extends Actor with Requester
           (indexEntry) => _contextIndex.add(indexEntry),
           // @todo: There should be two types of write response: 'accepted' and 'written'
           // the last should be sent here 'whenWritten'
-          (exception) => respond(x, ErrorResponse(exception))
+          (exception) => respond(x, ErrorResponse(x, exception))
         )
         // @todo: There should be two types of write response: 'accepted' and 'written'
         // where the first would be here
-        respond(x, WriteResponse())
+        respond(x, WriteResponse(x))
     })
   })
 
