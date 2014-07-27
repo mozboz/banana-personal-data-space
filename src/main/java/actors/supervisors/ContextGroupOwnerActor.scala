@@ -1,6 +1,6 @@
 package actors.supervisors
 
-import actors.behaviors.{MessageHandler, Requester, RequestResponder, Request, Response}
+import actors.behaviors.{MessageHandler, Requester, Request}
 import akka.actor.{Props, ActorRef, Actor}
 import akka.event.LoggingReceive
 import events.{DisconnectProfile, ConnectProfile}
@@ -13,7 +13,7 @@ import scala.collection.mutable
  * Is responsible to spawn and stop context actors on request.
  */
 class ContextGroupOwnerActor extends Actor with Requester
-                                           with RequestResponder
+                                           //with RequestResponder
                                            with MessageHandler {
 
   val _managedContexts = new mutable.HashSet[String]
@@ -22,7 +22,7 @@ class ContextGroupOwnerActor extends Actor with Requester
   var _profileResource = new BufferedResource[String, ActorRef]("Profile")
   var _configActor : ActorRef = null
 
-  def receive = LoggingReceive({
+  def receive = LoggingReceive(handleResponse orElse {
     
     case x:ConnectProfile =>  _profileResource.set((a,loaded,c) => loaded(x.profileRef))
     case x:DisconnectProfile => _profileResource.reset(None)
@@ -32,9 +32,9 @@ class ContextGroupOwnerActor extends Actor with Requester
 
     case x:ManageContexts =>
       x.contexts.foreach((contextKey) => _managedContexts.add(contextKey))
-      respond(x, ManageContextsResponse(x, x.contexts))
+      sender ! ManageContextsResponse(x, x.contexts)
 
-    case x:Request => handleRequest(x, sender(), {
+    //case x:Request => handleRequest(x, sender(), {
 
       /*  case x: ManageContexts =>
           x.contexts.foreach((contextKey) => _managedContexts.add(contextKey))
@@ -47,17 +47,17 @@ class ContextGroupOwnerActor extends Actor with Requester
           spawnContext(x.context,
             (actorRef) =>
               //actorRef ! // @todo: Send the configuration to the actor (as event?!)
-              respond(x, SpawnContextResponse(x, actorRef)),
+              sender ! SpawnContextResponse(x, actorRef),
             (exception) => throwExFromMessage(x, "Error while starting the context " + x.context + "." + exception.toString))
 
         case x: ContextExists =>
           contextExists(x.context,
-            (actorRefOption) => respond(x, ContextExistsResponse(x, exists = true)),
-            () => respond(x, ContextExistsResponse(x, exists = false)),
+            (actorRefOption) => sender ! ContextExistsResponse(x, exists = true),
+            () => sender ! ContextExistsResponse(x, exists = false),
             (exception) => throwExFromMessage(x, "Error while checking if context " + x.context + " exists: " + exception))
-      })
+     // })
 
-    case x:Response => handleResponse(x)
+    //case x:Response => handleResponse(x)
   })
 
   def contextManagedByActor(contextKey:String,

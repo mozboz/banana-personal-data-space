@@ -2,8 +2,7 @@ package actors.behaviors
 
 import java.util.UUID
 
-trait Request extends  Message {
-}
+trait Request extends  Message
 
 object Request
 {

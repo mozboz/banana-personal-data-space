@@ -25,7 +25,7 @@ import utils.{ResourceManager, BufferedResource}
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextGroupAccessorActor extends Actor with RequestProxy {
+class ContextGroupAccessorActor extends Actor with Requester /*with RequestResponder*/ {
 
   /**
    * Represents a future for the context group owner actor. This actor ref is necessary to
@@ -45,7 +45,7 @@ class ContextGroupAccessorActor extends Actor with RequestProxy {
       )
     })
 
-  def receive = LoggingReceive({
+  def receive = LoggingReceive( handleResponse orElse {
 
     case x:ContextStopped =>
 
@@ -61,9 +61,10 @@ class ContextGroupAccessorActor extends Actor with RequestProxy {
             (res) => res ! x,
             (ex) => throw ex))
 
-    case x:Response => handleResponse(x)
+    // replaced through handleResponse partial function:
+    // case x:Response => handleResponse(x)
 
-    case x:Request => handleRequest(x, sender(), {
+    //case x:Request => handleRequest(x, sender(), {
 
         case x: Read =>
           withContext(x.fromContext)(
@@ -72,15 +73,15 @@ class ContextGroupAccessorActor extends Actor with RequestProxy {
                 actorRef = contextActorRef,
                 dataKey = x.key,
                 data = (data) => {
-                  respond(x, ReadResponse(x, data))
+                  sender ! ReadResponse(x, data)
                 },
                 error = (ex) => {
-                  respond(x, ErrorResponse(x, ex))
+                  sender ! ErrorResponse(x, ex)
                 }
               )
             },
             onError = (ex)
-              => respond(x, ErrorResponse(x, ex))
+              => sender ! ErrorResponse(x, ex)
         )
 
         case x: Write =>
@@ -91,16 +92,17 @@ class ContextGroupAccessorActor extends Actor with RequestProxy {
                 dataKey = x.key,
                 data = () => x.value,
                 success = () => {
-                  respond(x, WriteResponse(x))
+                  sender ! WriteResponse(x)
                 },
                 error = (ex) => {
-                  respond(x, ErrorResponse(x, ex))
+                  sender ! ErrorResponse(x, ex)
                 }
               )
             },
             onError = (ex)
-              => respond(x, ErrorResponse(x, ex))
-        )})
+              => sender ! ErrorResponse(x, ex)
+          )
+        //)})
   })
 
 

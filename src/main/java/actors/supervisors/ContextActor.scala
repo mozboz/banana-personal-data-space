@@ -21,7 +21,7 @@ import scala.collection.immutable.HashSet
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextActor extends Actor with RequestProxy {
+class ContextActor extends Actor with Requester {
 
   // @todo: Implement aggregation
   // @todo: Implement the metadata stuff
@@ -35,7 +35,7 @@ class ContextActor extends Actor with RequestProxy {
   private val _fsBackendActor = context.actorOf(Props[FilesystemContextActor], context.self.path.name)
   context.self ! ConnectContextBackend(_fsBackendActor)
 
-  def receive = LoggingReceive({
+  def receive = LoggingReceive(handleResponse orElse {
 
     case x:ConnectContextBackend => _contextBackend.set((a, loaded, b) => loaded(x.actorRef))
     case x:DisconnectContextBackend => _contextBackend.reset(None)
@@ -48,22 +48,27 @@ class ContextActor extends Actor with RequestProxy {
         },
         (ex) => throw ex)
 
-    case x:Response => handleResponse(x)
-    case x:Request => handleRequest(x, sender(), {
+    //case x:Response => handleResponse(x)
+    //case x:Request => handleRequest(x, sender(), {
 
       case x:AggregateRequest =>
 
       case x:ReadFromContext =>
         withContextBackend(
           (backend) => proxy(x, backend, context.self),
-          (exception) => respond(x, ErrorResponse(x, exception)))
+          (exception) => sender ! ErrorResponse(x, exception))
 
       case x:WriteToContext =>
         withContextBackend(
           (backend) => proxy(x, backend, context.self),
-          (exception) => respond(x, ErrorResponse(x, exception)))
-    })
+          (exception) => sender ! ErrorResponse(x, exception))
+    //})
   })
+
+  private def proxy(x:Any,y:Any,z:Any) {
+    // @todo: Dummy
+    throw new Exception("This is only a dummy!");
+  }
 
   private def withContextBackend (withContextBackend : (ActorRef) => Unit,
                                   onError : (Exception) => Unit) {

@@ -1,3 +1,4 @@
+/*
 package actors.behaviors
 
 import akka.actor.ActorRef
@@ -17,3 +18,4 @@ trait RequestProxy extends Requester
     })
   }
 }
+*/

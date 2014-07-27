@@ -1,7 +1,7 @@
 package actors.behaviors
 
 import java.util.UUID
-import akka.actor.ActorRef
+import akka.actor.{Actor, ActorRef}
 
 import scala.collection.mutable
 
@@ -10,15 +10,35 @@ import scala.collection.mutable
  * implement the Responder trait.
  */
 trait Requester {
+  this: Actor  =>
+
   private val _pendingRequests = new mutable.HashMap[UUID,(Response) => (Boolean)]
 
-  def handleResponse(x:Response) {
-    val processed = _pendingRequests
-      .getOrElse(x.getRequestId(), (x:Response) => false)
-      .apply(x)
+  /**
+   * Defines a partial Receive function which can be used by an actor.
+   */
+  def handleResponse: Receive = new Receive {
 
-    if (processed)
-      _pendingRequests.remove(x.getRequestId())
+    def isDefinedAt(x: Any) = {
+      x match  {
+        case x:Response => true
+        case _ => false
+      }
+    }
+
+    def apply(x: Any) = {
+      x match {
+        case x: Response =>
+          val processed = _pendingRequests
+            .getOrElse(x.getRequestId(), (x: Response) => false)
+            .apply(x)
+
+          if (processed)
+            _pendingRequests.remove(x.getRequestId())
+
+        case _ => throw new Exception("Can only be applied on Response-messages.");
+      }
+    }
   }
 
   def onResponseOf(message:Message, to:ActorRef, sender:ActorRef, onResponse:(Response) => (Unit)) {

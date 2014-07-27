@@ -16,9 +16,8 @@ import requests._
 import utils.BufferedResource
 
 class FilesystemContextActor extends Actor with Requester
-                                           with RequestResponder
                                            with MessageHandler
-                                           with RequiresSetup {
+                                           /*with RequiresSetup*/ {
 
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
 
@@ -38,7 +37,7 @@ class FilesystemContextActor extends Actor with Requester
 
   def receive = LoggingReceive({
 
-    case x:Setup => handleSetup(x)
+    // case x:Setup => handleSetup(x)
 
     case x:ConnectFile =>
       _contextIndex = new KeyMapFilesystemPersistence().load(_dataFolder, context.self.path.name)
@@ -51,14 +50,14 @@ class FilesystemContextActor extends Actor with Requester
 
     case x:Shutdown => context.self ! DisconnectFile() // @todo: Make Shutdown use request/response
 
-    case x:Request => handleRequest(x, sender(), {
+    //case x:Request => handleRequest(x, sender(), {
 
       case x:ReadFromContext =>
         readFromDataFile(x.key,
           (data) => {
-            respond(x, ReadResponse(x, data))
+            sender ! ReadResponse(x, data)
           },
-          (error) => respond(x, ErrorResponse(x, error)))
+          (error) => sender ! ErrorResponse(x, error))
 
 
       case x:WriteToContext =>
@@ -66,12 +65,13 @@ class FilesystemContextActor extends Actor with Requester
           (indexEntry) => _contextIndex.add(indexEntry),
           // @todo: There should be two types of write response: 'accepted' and 'written'
           // the last should be sent here 'whenWritten'
-          (exception) => respond(x, ErrorResponse(x, exception))
+          (exception) => sender ! ErrorResponse(x, exception)
         )
         // @todo: There should be two types of write response: 'accepted' and 'written'
         // where the first would be here
-        respond(x, WriteResponse(x))
-    })
+        sender ! WriteResponse(x)
+    //}
+  //)
   })
 
   /**
