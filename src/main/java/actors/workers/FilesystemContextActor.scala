@@ -20,10 +20,7 @@ class FilesystemContextActor extends Actor with Requester {
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
 
   private var _contextIndex = new KeyMapIndex(context.self.path.name)
-  //private var _configActorRef : ActorRef = null
   private var _dataFolder = ""
-
-  //context.self ! ConnectFile(_dataFolder + context.self.path.name + ".txt")
 
 
   def receive = LoggingReceive({
@@ -36,10 +33,9 @@ class FilesystemContextActor extends Actor with Requester {
   })
 
   private def handleSetup(sender:ActorRef, message:Setup) {
-    // _configActorRef = message.configActor // Should not be cached because then the config could
-    // be renewed on the fly by sending a reference to a new config actor // @todo: review
+
     onResponseOf(GetContextDataFilePath(context.self.path.name), message.configActor, self, {
-      case x:GetContextDataFilePathResponse =>
+      case x:GetContextDataFilePathResponse => // @todo: !! Response is not handled by the actor. Why?
         _dataFolder = x.path
         self ! ConnectFile(_dataFolder + context.self.path.name + ".txt")
         sender ! SetupResponse(message)

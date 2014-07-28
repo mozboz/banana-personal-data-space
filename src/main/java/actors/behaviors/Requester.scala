@@ -38,6 +38,9 @@ trait Requester extends Actor{
     }
   }
 
+  // @todo: Add a possibility to wait for more than one response to a request
+  // Either from different actors (for aggregation) or the same (for progress update)
+
   def onResponseOf(request: Request, to: ActorRef, sender:ActorRef, onResponse: (Response) => (Unit)) {
     // @todo: Add timeout for the case that the response is never provided
     _pendingRequests.put(request.messageId, (x) => {
