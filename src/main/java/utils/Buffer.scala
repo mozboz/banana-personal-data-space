@@ -10,7 +10,13 @@ import scala.collection.mutable
 //@todo Add timeouts and limits (ringbuffer)
 trait Buffer[TKey,TResource] extends Resource[TResource] {
 
-  private val _resourceRequests = new mutable.Queue[((TResource) => Unit, (Exception) => Unit)]
+  /**
+   * Represents a request to a resource which is managed by a buffer.
+   * Contains a success and error parameter.
+   */
+  type ResouceRequest = ((TResource) => Unit, (Exception) => Unit)
+
+  private val _resourceRequests = new mutable.Queue[ResouceRequest]
   private val _resource = new ValueContainer[TResource]
 
   private val _available = new ValueContainer[Boolean](Some(false))
@@ -72,7 +78,7 @@ trait Buffer[TKey,TResource] extends Resource[TResource] {
     if (_available.get().getOrElse(false))
       withResource.apply(_resource.get().get)
     else
-      _resourceRequests.enqueue(Tuple2(withResource, onError))
+      _resourceRequests.enqueue((withResource, onError))
   }
 
   private def HandleFailState() {

@@ -48,12 +48,5 @@ object BPDS extends App {
   _contextGroupAccessor ! Write("Key1", "Value1", "Context2")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context2")
 
-  _contextGroupAccessor ! Read("Key1", "Context1")
-  _contextGroupAccessor ! Read("Key2", "Context1")
-
-  _contextGroupAccessor ! Read("Key1", "Context2")
-  _contextGroupAccessor ! Read("Key2", "Context2")
-
   _contextGroupOwner ! Shutdown()
-
 }

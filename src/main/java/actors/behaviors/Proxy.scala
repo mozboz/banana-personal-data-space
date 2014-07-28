@@ -4,9 +4,8 @@ package actors.behaviors
 import akka.actor.{Actor, ActorRef}
 
 trait Proxy extends Requester{
-  this: Actor =>
   /**
-   * Proxies the request to the "to"-Actor and then responds to the original Requester.
+   * Proxies the request to the "to"-Actor and then passes the response to the original Requester.
    * @param request The request to proxy
    * @param to The target actor's ref
    */
