@@ -15,24 +15,16 @@ import events.{ConnectFile, DisconnectFile}
 import requests._
 import utils.BufferedResource
 
-class FilesystemContextActor extends Actor with Requester
-                                           with MessageHandler {
+class FilesystemContextActor extends Actor with Requester {
 
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
 
   private var _contextIndex = new KeyMapIndex(context.self.path.name)
-  private var _configActorRef : ActorRef = null
+  //private var _configActorRef : ActorRef = null
   private var _dataFolder = ""
 
-  context.self ! ConnectFile(_dataFolder + context.self.path.name + ".txt")
+  //context.self ! ConnectFile(_dataFolder + context.self.path.name + ".txt")
 
-  def doSetup(x:Setup) {
-    _configActorRef = x.configActor
-    onResponseOf(new GetContextDataFilePath(context.self.path.name), _configActorRef, sender(), {
-      case x:GetContextDataFilePathResponse => _dataFolder = x.path
-      case x:ErrorResponse => throw x.ex
-    })
-  }
 
   def receive = LoggingReceive({
     case x:Setup => handleSetup(sender(), x)
@@ -44,7 +36,16 @@ class FilesystemContextActor extends Actor with Requester
   })
 
   private def handleSetup(sender:ActorRef, message:Setup) {
-    // @todo: !! Rebuild Setup handling
+    // _configActorRef = message.configActor // Should not be cached because then the config could
+    // be renewed on the fly by sending a reference to a new config actor // @todo: review
+    onResponseOf(GetContextDataFilePath(context.self.path.name), message.configActor, self, {
+      case x:GetContextDataFilePathResponse =>
+        _dataFolder = x.path
+        self ! ConnectFile(_dataFolder + context.self.path.name + ".txt")
+        sender ! SetupResponse(message)
+
+      case x:ErrorResponse => throw x.ex
+    })
   }
 
   private def handleConnectFile(sender:ActorRef, message:ConnectFile) {
@@ -59,7 +60,8 @@ class FilesystemContextActor extends Actor with Requester
   }
 
   private def handleShutdown(sender:ActorRef, message:Shutdown) {
-    self ! DisconnectFile() // @todo: Make Shutdown use request/response
+    self ! DisconnectFile()
+    sender ! ShutdownResponse
   }
 
   private def handleReadFromContext(sender:ActorRef, message:ReadFromContext) {

@@ -8,4 +8,4 @@ import akka.actor.ActorRef
  * @param context The name of the context to spawn
  */
 case class SpawnContext(context:String) extends Request
-case class SpawnContextResponse(request:Request, actorRef:ActorRef) extends Response(request.messageId)
+case class SpawnContextResponse(request:Request, actorRef:ActorRef) extends Response(request.messageId)// @todo: Change this back to messageId only to prevent sending the whole request with every answer

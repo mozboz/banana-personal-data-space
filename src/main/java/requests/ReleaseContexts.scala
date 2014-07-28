@@ -7,5 +7,5 @@ import actors.behaviors.{Response, Request}
  * @param contextKey A list of context keys to manage
  */
 case class ReleaseContexts(contextKey:List[String]) extends Request
-case class ReleaseContextsResponse(request:Request, released:List[String])  extends Response(request.messageId)
+case class ReleaseContextsResponse(request:Request, released:List[String])  extends Response(request.messageId) // @todo: Change this back to messageId only to prevent sending the whole request with every answer
 

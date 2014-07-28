@@ -17,12 +17,10 @@ class ContextGroupOwnerActor extends Actor with Requester
 
   val _managedContexts = new mutable.HashSet[String]
   val _runningContexts = new mutable.HashMap[String,ActorRef]
-
-  var _profileResource = new BufferedResource[String, ActorRef]("Profile")
+  val _profileResource = new BufferedResource[String, ActorRef]("Profile")
   var _configActor : ActorRef = null
 
   def receive = LoggingReceive(handleResponse orElse {
-    
     case x: ConnectProfile =>  handleConnectProfile(sender(),x)
     case x: DisconnectProfile => handleDisconnectProfile(sender(), x)
     case x: Setup => handleSetup(sender(), x)
@@ -46,7 +44,19 @@ class ContextGroupOwnerActor extends Actor with Requester
   }
 
   def handleShutdown(sender:ActorRef, message:Shutdown) {
-    _runningContexts.foreach((a) => a._2 ! message) // @todo: Remove from _runningContexts when stopped (request/response for shutdown)
+    // @todo: Test if this is suitable
+    var toStop = _runningContexts.size
+    _runningContexts.foreach((a) => {
+      onResponseOf(message, a._2, self, (response) => {
+
+        _runningContexts.remove(a._1)
+
+        toStop = toStop - 1
+        if (toStop == 0) {
+          sender ! ShutdownResponse(message)
+        }
+      })
+    })
   }
 
   def handleManageContexts(sender:ActorRef, message:ManageContexts) {
@@ -55,12 +65,20 @@ class ContextGroupOwnerActor extends Actor with Requester
   }
 
   def handleReleaseContexts(sender:ActorRef, message:ReleaseContexts) {
-    // @todo: implement release contexts
+    // @todo: implement release contexts (which is the counterpart to ManageContexts)
   }
 
   def handleSpawnContext(sender:ActorRef, message:SpawnContext) {
+
+    def handleSpawnedContext(context:ActorRef) {
+      onResponseOf(Setup(_configActor),  context, self, {
+        case x:SetupResponse => sender ! SpawnContextResponse(message, context)
+        case x:ErrorResponse => sender ! ErrorResponse(message, x.ex)
+      })
+    }
+
     spawnContext(message.context,
-      (actorRef) => sender ! SpawnContextResponse(message, actorRef), // @todo: Send the configuration to the actor (as event?!)
+      (actorRef) => handleSpawnedContext(actorRef),
       (exception) => throwExFromMessage(message, "Error while starting the context " + message.context + "." + exception.toString))
   }
 
@@ -142,10 +160,8 @@ class ContextGroupOwnerActor extends Actor with Requester
       no = () => {
         _profileResource.withResource((profileActorRef) => {
           onResponseOf(ContextExists(contextKey), profileActorRef, self, {
-            case ContextExistsResponse(x, true) =>
-              yes(None)
-            case ContextExistsResponse(x, false) =>
-              no()
+            case ContextExistsResponse(x, true) => yes(None)
+            case ContextExistsResponse(x, false) => no()
             case x: ErrorResponse => error(new Exception("Error while checking if context " + contextKey + " exists.", x.ex))
           })
         },

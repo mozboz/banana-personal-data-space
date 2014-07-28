@@ -45,8 +45,10 @@ class ContextGroupAccessorActor extends Actor with Requester {
       )
     })
 
+
   def receive = LoggingReceive(handleResponse orElse {
-    case x: ContextStopped =>
+    case x: Setup => handleSetup(sender(), x)
+    case x: ContextStopped => handleContextStopped(sender(), x)
     case x: ConnectContextGroupOwner => handleConnectContextGroupOwner(sender(),x)
     case x: DisconnectContextGroupOwner => handleDisconnectContextOwner(sender(), x)
     // @todo: Should be a request as confirmation is required
@@ -55,6 +57,14 @@ class ContextGroupAccessorActor extends Actor with Requester {
     case x: Read => handleRead(sender(), x)
     case x: Write => handleWrite(sender(), x)
   })
+
+  private def handleSetup(sender: ActorRef, message: Setup) {
+
+  }
+
+  private def handleContextStopped(sender: ActorRef, message:ContextStopped) {
+
+  }
 
   private def handleRead(sender: ActorRef, message: Read) {
     withContext(message.fromContext)(

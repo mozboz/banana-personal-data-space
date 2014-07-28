@@ -1,7 +1,7 @@
 package actors.supervisors
 
-import actors.behaviors.{Request, MessageHandler}
-import akka.actor.Actor
+import actors.behaviors.MessageHandler
+import akka.actor.{ActorRef, Actor}
 import requests.config.{GetContextDataFilePathResponse, GetContextDataFilePath}
 
 class ConfigurationActor extends Actor with MessageHandler {
@@ -9,9 +9,10 @@ class ConfigurationActor extends Actor with MessageHandler {
   private val _dataFolder = "/home/daniel/profileSystem/"
 
   def receive = {
-    //case x:Request => handleRequest(x, context.self, {
-      case x:GetContextDataFilePath =>
-        sender ! GetContextDataFilePathResponse(x, _dataFolder)
-    //})
+      case x:GetContextDataFilePath => handleGetContextDataFilePath(sender(), x)
+  }
+
+  private def handleGetContextDataFilePath(sender:ActorRef, message:GetContextDataFilePath) {
+    sender ! GetContextDataFilePathResponse(message, _dataFolder)
   }
 }
