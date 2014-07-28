@@ -23,7 +23,7 @@ class FilesystemContextActor extends Actor with Requester {
   private var _dataFolder = ""
 
 
-  def receive = LoggingReceive({
+  def receive = LoggingReceive(handleResponse orElse {
     case x:Setup => handleSetup(sender(), x)
     case x:ConnectFile => handleConnectFile(sender(), x)
     case x:DisconnectFile => handleDisconnectFile(sender(), x)
@@ -35,7 +35,7 @@ class FilesystemContextActor extends Actor with Requester {
   private def handleSetup(sender:ActorRef, message:Setup) {
 
     onResponseOf(GetContextDataFilePath(context.self.path.name), message.configActor, self, {
-      case x:GetContextDataFilePathResponse => // @todo: !! Response is not handled by the actor. Why?
+      case x:GetContextDataFilePathResponse =>
         _dataFolder = x.path
         self ! ConnectFile(_dataFolder + context.self.path.name + ".txt")
         sender ! SetupResponse(message)
