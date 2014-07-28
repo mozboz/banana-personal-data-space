@@ -6,6 +6,12 @@ import akka.actor.{Props, ActorSystem}
 import com.typesafe.config.{Config, ConfigFactory}
 import events.{ConnectContextGroupOwner, ConnectProfile}
 import requests._
+import concurrent.Await
+import akka.pattern.ask
+import akka.util.Timeout
+
+// import akka.util.Timeout
+import scala.concurrent.duration._
 
 
 object BPDS extends App {
@@ -47,6 +53,13 @@ object BPDS extends App {
 
   _contextGroupAccessor ! Write("Key1", "Value1", "Context2")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context2")
+
+  implicit val timeout = Timeout(5000)
+  val future =  _contextGroupAccessor ? Read("Key2", "Context2")
+  val result = Await.result(future, timeout.duration).asInstanceOf[ReadResponse]
+
+  println(result)
+  println(System.getProperty("foo"))
 
   _contextGroupOwner ! Shutdown()
 }
