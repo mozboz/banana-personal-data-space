@@ -6,8 +6,7 @@ import requests.config.{GetContextDataFilePathResponse, GetContextDataFilePath}
 
 class ConfigurationActor extends Actor with MessageHandler {
 
-  System.getProperty("foo")
-  private val _dataFolder = "/home/james/dev/banana-personal-data-space/profileSystem/"
+  private val _dataFolder = System.getProperty("home")
 
   def receive = {
       case x:GetContextDataFilePath => handleGetContextDataFilePath(sender(), x)
