@@ -13,7 +13,7 @@ import scala.collection.mutable
  * Is responsible to spawn and stop context actors on request.
  */
 class ContextGroupOwnerActor extends Actor with Requester
-                                           with MessageHandler {
+                                           with MessageHandler { // @todo: add "with SystemEvents"
 
   val _managedContexts = new mutable.HashSet[String]
   val _runningContexts = new mutable.HashMap[String,ActorRef]
@@ -23,7 +23,7 @@ class ContextGroupOwnerActor extends Actor with Requester
   def receive = LoggingReceive(handleResponse orElse {
     case x: ConnectProfile =>  handleConnectProfile(sender(),x)
     case x: DisconnectProfile => handleDisconnectProfile(sender(), x)
-    case x: Setup => handleSetup(sender(), x)
+    case x: Startup => handleSetup(sender(), x)
     case x: Shutdown => handleShutdown(sender(), x)
     case x: ManageContexts => handleManageContexts(sender(), x)
     case x: ReleaseContexts => handleReleaseContexts(sender(), x)
@@ -39,8 +39,8 @@ class ContextGroupOwnerActor extends Actor with Requester
     _profileResource.reset(None)
   }
 
-  def handleSetup(sender:ActorRef, message:Setup) {
-    _configActor = message.configActor
+  def handleSetup(sender:ActorRef, message:Startup) {
+    _configActor = message.configRef
   }
 
   def handleShutdown(sender:ActorRef, message:Shutdown) {
@@ -71,7 +71,7 @@ class ContextGroupOwnerActor extends Actor with Requester
   def handleSpawnContext(sender:ActorRef, message:SpawnContext) {
 
     def handleSpawnedContext(context:ActorRef) {
-      onResponseOf(Setup(_configActor),  context, self, {
+      onResponseOf(Startup(_configActor),  context, self, {
         case x:SetupResponse => sender ! SpawnContextResponse(message, context)
         case x:ErrorResponse => sender ! ErrorResponse(message, x.ex)
       })

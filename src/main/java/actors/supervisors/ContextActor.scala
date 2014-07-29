@@ -8,7 +8,7 @@ import events.{DisconnectContextBackend, ConnectContextBackend}
 import requests._
 import utils.BufferedResource
 
-import scala.collection.immutable.HashSet
+import scala.collection.mutable
 
 /**
  * Represents a logical context. This can be either local or remote, depending on the connected context-backend.
@@ -21,12 +21,17 @@ import scala.collection.immutable.HashSet
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextActor extends Actor with Requester with Proxy {
+class ContextActor extends Actor with Requester with Proxy  { // @todo: add "with SystemEvents"
 
   // @todo: Implement the metadata stuff
-  private val _referencedContexts = new HashSet[String]
-  private val _referencedByContexts = new HashSet[String]
-  private val _aggregatesContexts = new HashSet[String]
+  private val _referencedContexts = new mutable.HashMap[String, ActorRef]
+  /**
+   * Contains references to the actor which represents the context from which a context is referenced.
+   * Key:Uri, Val:ActorRef
+   */
+  private val _referencedByContexts = new mutable.HashMap[String, ActorRef]
+  private val _aggregatesContexts = new mutable.HashMap[String, ActorRef]
+
   private val _contextBackend = new BufferedResource[String,ActorRef]("ContextBackend")
 
   // @todo: only for testing
@@ -34,17 +39,20 @@ class ContextActor extends Actor with Requester with Proxy {
   self ! ConnectContextBackend(_fsBackendActor)
 
   def receive = LoggingReceive(handleResponse orElse {
-    case x: Setup => handleSetup(sender(), x)
+    case x: Startup => handleSetup(sender(), x)
     case x: ConnectContextBackend => handleConnectContextBackend(sender(), x)
     case x: DisconnectContextBackend => handleDisconnectContextBackend(sender(), x)
     case x: Shutdown => handleShutdown(sender(), x)
-    case x: AggregateRequest => handleAggregateRequest(sender(), x)
+    case x: AggregateContext => handleAggregateContext(sender(), x)
     case x: ReadFromContext => handleReadFromContext(sender(), x)
     case x: WriteToContext => handleWriteToContext(sender(), x)
+    case x: AddReferencedBy => handleAddReferencedBy(sender(), x)
+    case x: AddReferenceTo => handleAddReferenceTo(sender(), x)
   })
 
-  private def handleSetup(sender:ActorRef, message:Setup) {
+  private def handleSetup(sender:ActorRef, message:Startup) {
     // @todo: Implement setup logic
+    // @todo: Which URI does this context have?
     _contextBackend.withResource(
       (actor) => {
         actor ! message
@@ -52,6 +60,21 @@ class ContextActor extends Actor with Requester with Proxy {
       },
       (ex) => sender ! ErrorResponse(message, ex)
     )
+  }
+
+  private def handleAddReferenceTo(sender:ActorRef, message:AddReferenceTo) {
+    // @todo: implement the AddReferenceTo behavior
+    _referencedContexts.put(message.uri, message.actor)
+  }
+
+  private def handleAddReferencedBy(sender:ActorRef, message:AddReferencedBy) {
+    // @todo: implement the AddReferencedBy behavior
+    _referencedByContexts.put(message.uri, message.actor)
+  }
+
+  private def handleAggregateContext(sender:ActorRef, message:AggregateContext) {
+    // @todo: implement the AggregateContext behavior
+    _aggregatesContexts.put(message.uri, message.actor)
   }
 
   private def handleConnectContextBackend(sender:ActorRef, message:ConnectContextBackend) {
@@ -63,7 +86,7 @@ class ContextActor extends Actor with Requester with Proxy {
   }
 
   private def handleShutdown(sender:ActorRef, message:Shutdown) {
-    // @todo: Test if this is suitable
+    // @todo: Test if Shutdown behavior is suitable
     _contextBackend.withResource(
       (actor) => {
         actor ! message
@@ -75,10 +98,6 @@ class ContextActor extends Actor with Requester with Proxy {
         })
       },
       (ex) => throw ex)
-  }
-
-  private def handleAggregateRequest(sender:ActorRef, message:AggregateRequest) {
-    // @todo: Build context aggregation
   }
 
   private def handleReadFromContext(sender:ActorRef, message:ReadFromContext) {

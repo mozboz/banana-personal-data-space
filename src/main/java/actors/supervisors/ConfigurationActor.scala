@@ -8,6 +8,7 @@ class ConfigurationActor extends Actor with MessageHandler {
 
   private val _dataFolder = System.getProperty("home")
 
+  // @todo: make the configuration just another context
   def receive = {
       case x:GetContextDataFilePath => handleGetContextDataFilePath(sender(), x)
   }

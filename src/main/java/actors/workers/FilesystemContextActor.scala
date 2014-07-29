@@ -24,7 +24,7 @@ class FilesystemContextActor extends Actor with Requester {
 
 
   def receive = LoggingReceive(handleResponse orElse {
-    case x:Setup => handleSetup(sender(), x)
+    case x:Startup => handleSetup(sender(), x)
     case x:ConnectFile => handleConnectFile(sender(), x)
     case x:DisconnectFile => handleDisconnectFile(sender(), x)
     case x:Shutdown => handleShutdown(sender(), x)
@@ -32,9 +32,9 @@ class FilesystemContextActor extends Actor with Requester {
     case x:WriteToContext => handleWriteToContext(sender(), x)
   })
 
-  private def handleSetup(sender:ActorRef, message:Setup) {
+  private def handleSetup(sender:ActorRef, message:Startup) {
 
-    onResponseOf(GetContextDataFilePath(context.self.path.name), message.configActor, self, {
+    onResponseOf(GetContextDataFilePath(context.self.path.name), message.configRef, self, {
       case x:GetContextDataFilePathResponse =>
         _dataFolder = x.path
         self ! ConnectFile(_dataFolder + context.self.path.name + ".txt")

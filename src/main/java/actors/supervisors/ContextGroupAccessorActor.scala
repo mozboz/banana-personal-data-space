@@ -25,7 +25,7 @@ import utils.{ResourceManager, BufferedResource}
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextGroupAccessorActor extends Actor with Requester {
+class ContextGroupAccessorActor extends Actor with Requester { // @todo: add "with SystemEvents"
 
   /**
    * Represents a future for the context group owner actor. This actor ref is necessary to
@@ -47,7 +47,7 @@ class ContextGroupAccessorActor extends Actor with Requester {
 
 
   def receive = LoggingReceive(handleResponse orElse {
-    case x: Setup => handleSetup(sender(), x)
+    case x: Startup => handleSetup(sender(), x)
     case x: ContextStopped => handleContextStopped(sender(), x)
     case x: ConnectContextGroupOwner => handleConnectContextGroupOwner(sender(),x)
     case x: DisconnectContextGroupOwner => handleDisconnectContextOwner(sender(), x)
@@ -58,7 +58,7 @@ class ContextGroupAccessorActor extends Actor with Requester {
     case x: Write => handleWrite(sender(), x)
   })
 
-  private def handleSetup(sender: ActorRef, message: Setup) {
+  private def handleSetup(sender: ActorRef, message: Startup) {
 
   }
 

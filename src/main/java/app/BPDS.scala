@@ -36,17 +36,17 @@ object BPDS extends App {
   val _configurationActor = system.actorOf(Props[ConfigurationActor], "ConfigurationActor")
   val _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
 
-  _profileActor ! Setup(_configurationActor)
+  _profileActor ! Startup(_configurationActor)
 
   val _contextGroupOwner = system.actorOf(Props[ContextGroupOwnerActor], "ContextGroupOwner")
   _contextGroupOwner ! ConnectProfile(_profileActor)
-  _contextGroupOwner ! Setup(_configurationActor)
+  _contextGroupOwner ! Startup(_configurationActor)
 
   val _contextGroupAccessor = system.actorOf(Props[ContextGroupAccessorActor], "ContextGroupAccessor")
   _contextGroupOwner ! ManageContexts(List("Context1", "Context2", "Context3"))
 
   _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
-  _contextGroupAccessor ! Setup(_configurationActor)
+  _contextGroupAccessor ! Startup(_configurationActor)
 
   _contextGroupAccessor ! Write("Key1", "Value1", "Context1")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context1")
