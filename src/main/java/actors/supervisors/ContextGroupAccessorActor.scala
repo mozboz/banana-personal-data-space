@@ -25,7 +25,7 @@ import utils.{ResourceManager, BufferedResource}
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextGroupAccessorActor extends Actor with Requester { // @todo: add "with SystemEvents"
+class ContextGroupAccessorActor extends BaseActor {
 
   /**
    * Represents a future for the context group owner actor. This actor ref is necessary to
@@ -46,20 +46,25 @@ class ContextGroupAccessorActor extends Actor with Requester { // @todo: add "wi
     })
 
 
-  def receive = LoggingReceive(handleResponse orElse {
-    case x: Startup => handleSetup(sender(), x)
+  def handleRequest = {
     case x: ContextStopped => handleContextStopped(sender(), x)
     case x: ConnectContextGroupOwner => handleConnectContextGroupOwner(sender(),x)
     case x: DisconnectContextGroupOwner => handleDisconnectContextOwner(sender(), x)
-    // @todo: Should be a request as confirmation is required
-    case x: Shutdown => handleShutdown(sender(), x)
-
     case x: Read => handleRead(sender(), x)
     case x: Write => handleWrite(sender(), x)
-  })
+  }
 
-  private def handleSetup(sender: ActorRef, message: Startup) {
+  def doStartup(sender: ActorRef, message: Startup) {
 
+  }
+
+  def doShutdown(sender:ActorRef, message:Shutdown) {
+    _contextResourceManager.keys().foreach(
+      (key) => _contextResourceManager
+        .get(key)
+        .withResource(
+          (res) => res ! message,
+          (ex) => throw ex))
   }
 
   private def handleContextStopped(sender: ActorRef, message:ContextStopped) {
@@ -93,15 +98,6 @@ class ContextGroupAccessorActor extends Actor with Requester { // @todo: add "wi
       },
       error = (ex) => sender ! ErrorResponse(message, ex)
     )
-  }
-
-  private def handleShutdown(sender:ActorRef, message:Shutdown) {
-    _contextResourceManager.keys().foreach(
-      (key) => _contextResourceManager
-        .get(key)
-        .withResource(
-          (res) => res ! message,
-          (ex) => throw ex))
   }
 
   private def handleDisconnectContextOwner(sender:ActorRef, message:DisconnectContextGroupOwner) {

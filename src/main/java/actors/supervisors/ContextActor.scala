@@ -21,7 +21,7 @@ import scala.collection.mutable
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextActor extends Actor with Requester with Proxy  { // @todo: add "with SystemEvents"
+class ContextActor extends BaseActor with Proxy  { // @todo: add "with SystemEvents"
 
   // @todo: Implement the metadata stuff
   private val _referencedContexts = new mutable.HashMap[String, ActorRef]
@@ -38,19 +38,17 @@ class ContextActor extends Actor with Requester with Proxy  { // @todo: add "wit
   private val _fsBackendActor = context.actorOf(Props[FilesystemContextActor], context.self.path.name)
   self ! ConnectContextBackend(_fsBackendActor)
 
-  def receive = LoggingReceive(handleResponse orElse {
-    case x: Startup => handleSetup(sender(), x)
+  def handleRequest = {
     case x: ConnectContextBackend => handleConnectContextBackend(sender(), x)
     case x: DisconnectContextBackend => handleDisconnectContextBackend(sender(), x)
-    case x: Shutdown => handleShutdown(sender(), x)
     case x: AggregateContext => handleAggregateContext(sender(), x)
     case x: ReadFromContext => handleReadFromContext(sender(), x)
     case x: WriteToContext => handleWriteToContext(sender(), x)
     case x: AddReferencedBy => handleAddReferencedBy(sender(), x)
     case x: AddReferenceTo => handleAddReferenceTo(sender(), x)
-  })
+  }
 
-  private def handleSetup(sender:ActorRef, message:Startup) {
+  def doStartup(sender:ActorRef, message:Startup) {
     // @todo: Implement setup logic
     // @todo: Which URI does this context have?
     _contextBackend.withResource(
@@ -60,6 +58,21 @@ class ContextActor extends Actor with Requester with Proxy  { // @todo: add "wit
       },
       (ex) => sender ! ErrorResponse(message, ex)
     )
+  }
+
+  def doShutdown(sender:ActorRef, message:Shutdown) {
+  // @todo: Test if Shutdown behavior is suitable
+    _contextBackend.withResource(
+      (actor) => {
+        actor ! message
+        onResponseOf(message, actor, self, {
+          case x: ShutdownResponse =>
+            self ! DisconnectContextBackend
+            sender ! ShutdownResponse(message)
+          case x: ErrorResponse => sender ! ErrorResponse(message, x.ex)
+        })
+      },
+      (ex) => throw ex)
   }
 
   private def handleAddReferenceTo(sender:ActorRef, message:AddReferenceTo) {
@@ -83,21 +96,6 @@ class ContextActor extends Actor with Requester with Proxy  { // @todo: add "wit
 
   private def handleDisconnectContextBackend(sender:ActorRef, message:DisconnectContextBackend) {
     _contextBackend.reset(None)
-  }
-
-  private def handleShutdown(sender:ActorRef, message:Shutdown) {
-    // @todo: Test if Shutdown behavior is suitable
-    _contextBackend.withResource(
-      (actor) => {
-        actor ! message
-        onResponseOf(message, actor, self, {
-          case x: ShutdownResponse =>
-            self ! DisconnectContextBackend
-            sender ! ShutdownResponse(message)
-          case x: ErrorResponse => sender ! ErrorResponse(message, x.ex)
-        })
-      },
-      (ex) => throw ex)
   }
 
   private def handleReadFromContext(sender:ActorRef, message:ReadFromContext) {

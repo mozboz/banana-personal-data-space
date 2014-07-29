@@ -11,7 +11,8 @@ import scala.collection.mutable
 /**
  * Provides convenient access to the configuration system and handles the startup and shutdown procedure.
  */
-abstract class BaseActor extends Actor with Requester {
+abstract class BaseActor extends Actor
+                         with Requester {
 
   private val _actorId = UUID.randomUUID()
   def actorId = _actorId
@@ -65,196 +66,207 @@ abstract class BaseActor extends Actor with Requester {
       case x: AddChildren => handleAddChildren(sender(), x)
       case x: RemoveChildren => handleRemoveChildren(sender(), x)
     }
+  }
 
-    private def handleAddChildren(sender:ActorRef, message:AddChildren) {
-      try {
-        message.children.foreach(a => _children.add(a))
-      } catch {
-        case x:Exception => sender ! ErrorResponse(message, x) // @todo: think about using STM for that purpose?!?
+  /**
+   * When overridden, processes startup logic for the actor.
+   */
+  def doStartup(sender:ActorRef, message:Startup)
+
+  /**
+   * When overridden, processes shutdown logic for the actor.
+   */
+  def doShutdown(sender:ActorRef, message:Shutdown)
+
+  private def handleAddChildren(sender:ActorRef, message:AddChildren) {
+    try {
+      message.children.foreach(a => _children.add(a))
+    } catch {
+      case x:Exception => sender ! ErrorResponse(message, x) // @todo: think about using STM for that purpose?!?
+    }
+    sender ! AddChildrenResponse(message)
+  }
+
+  private def handleRemoveChildren(sender:ActorRef, message:RemoveChildren) {
+    try {
+      message.children.foreach(a => _children.remove(a))
+    } catch {
+      case x:Exception => sender ! ErrorResponse(message, x) // @todo: think about using STM for that purpose?!?
+    }
+    sender ! RemoveChildrenResponse(message)
+  }
+
+  /**
+   * Sends the specified request to all children and waits until all responded.
+   * @param request The request
+   * @param then The continuation which should be called when all responses arrived
+   * @param error Timeout or other error continuation
+   */
+  def notifyAllChildren (request:Request,
+                         then:() => Unit,
+                         error:() => Unit) {
+    notifySome(request, _children, then, error)
+  }
+
+  /**
+   * Sends the specified request to some actors and waits until all responded.
+   * @param request The request
+   * @param then The continuation which should be called when all responses arrived
+   * @param error Timeout or other error continuation
+   */
+  def notifySome (request:Request,
+                  some:Iterable[ActorRef],
+                  then:() => Unit,
+                  error:() => Unit) {
+    val remaining = new mutable.HashSet[ActorRef]
+    some.foreach(a => remaining.add(a))
+
+    if (remaining.size == 0) {
+      then()
+    } else {
+      expectResponse(request, (response, sender, completed) => {
+        remaining.remove(sender)
+
+        if (remaining.size == 0) { // @todo: add timeout
+          completed()
+          then()
+        }
+      })
+
+      for(childActor <- remaining) {
+        childActor ! request
       }
-      sender ! AddChildrenResponse(message)
     }
+  }
 
-    private def handleRemoveChildren(sender:ActorRef, message:RemoveChildren) {
-      try {
-        message.children.foreach(a => _children.remove(a))
-      } catch {
-        case x:Exception => sender ! ErrorResponse(message, x) // @todo: think about using STM for that purpose?!?
-      }
-      sender ! RemoveChildrenResponse(message)
-    }
+  /**
+   * Sends the specified request to all children and aggregates every response that arrives.
+   * @param request The request
+   * @param aggregator The aggregator which gets the response and a "completed" function as parameters
+   * @param then The continuation that should be executed when the aggregation finished
+   * @param error The error continuation
+   */
+  def aggregateAllChildren(request:Request,
+                           aggregator:(Response, ActorRef, () => Unit) => Unit,
+                           then:Option[() => Unit] = None,
+                           error:Option[() => Unit] = None) {
+    aggregateSome(request, _children, aggregator, then, error)
+  }
 
-    /**
-     * Sends the specified request to all children and waits until all responded.
-     * @param request The request
-     * @param then The continuation which should be called when all responses arrived
-     * @param error Timeout or other error continuation
-     */
-    def notifyAll (request:Request,
-                   then:() => Unit,
-                   error:() => Unit) {
-      notifySome(request, _children, then, error)
-    }
-
-    def notifySome (request:Request,
+  /**
+   * Sends the specified request to some actors and aggregates every response that arrives.
+   * @param request The request
+   * @param aggregator The aggregator which gets the response and a "completed" function as parameters
+   * @param then The continuation that should be executed when the aggregation finished
+   * @param error The error continuation
+   */
+  def aggregateSome(request:Request,
                     some:Iterable[ActorRef],
-                    then:() => Unit,
-                    error:() => Unit) {
-      val remaining = new mutable.HashSet[ActorRef]
-      some.foreach(a => remaining.add(a))
+                    aggregator:(Response, ActorRef, () => Unit) => Unit,
+                    then:Option[() => Unit] = None,
+                    error:Option[() => Unit] = None) {
+    val remaining = new mutable.HashSet[ActorRef]
+    some.foreach(a => remaining.add(a))
 
-      if (remaining.size == 0) {
-        then()
-      } else {
-        expectResponse(request, (response, sender, completed) => {
-          remaining.remove(sender)
+    if (remaining.size == 0 && then.isDefined) {
+      then.get.apply()
+    } else {
+      var cancelled = false
 
-          if (remaining.size == 0) { // @todo: add timeout
-            completed()
-            then()
-          }
-        })
+      expectResponse(request, (response, sender, completed) => {
+        remaining.remove(sender)
 
-        for(childActor <- remaining) {
-          childActor ! request
+        // Wrap the completed call into a function which sets a cancelled-flag
+        val finishedAggregation = () => {
+          completed()
+          cancelled = true
         }
-      }
-    }
 
-    /**
-     * Sends the specified request to all children and aggregates every response that arrives.
-     * @param request The request
-     * @param aggregator The aggregator which gets the response and a "completed" function as parameters
-     * @param then The continuation that should be executed when the aggregation finished
-     * @param error The error continuation
-     */
-    def aggregateAll(request:Request,
-                     aggregator:(Response, ActorRef, () => Unit) => Unit,
-                     then:Option[() => Unit] = None,
-                     error:Option[() => Unit] = None) {
-      aggregateSome(request, _children, aggregator, then, error)
-    }
+        aggregator(response, sender, finishedAggregation)
 
-    def aggregateSome(request:Request,
-                      some:Iterable[ActorRef],
-                      aggregator:(Response, ActorRef, () => Unit) => Unit,
-                      then:Option[() => Unit] = None,
-                      error:Option[() => Unit] = None) {
-      val remaining = new mutable.HashSet[ActorRef]
-      some.foreach(a => remaining.add(a))
-
-      if (remaining.size == 0 && then.isDefined) {
-        then.get.apply()
-      } else {
-        var cancelled = false
-
-        expectResponse(request, (response, sender, completed) => {
-          remaining.remove(sender)
-
-          // Wrap the completed call into a function which sets a cancelled-flag
-          val finishedAggregation = () => {
+        if (remaining.size == 0 || cancelled) {  // @todo: add timeout
+          if (!cancelled) // already called when cancelled
             completed()
-            cancelled = true
-          }
 
-          aggregator(response, sender, finishedAggregation)
-
-          if (remaining.size == 0 || cancelled) {  // @todo: add timeout
-            if (!cancelled) // already called when cancelled
-              completed()
-
-            then.get.apply()
-          }
-        })
-
-        for(childActor <- remaining) {
-          childActor ! request
-        }
-      }
-    }
-
-    /**
-     * Processes doStartup, then notify all children.
-     * When all children responded with StartupResponse, then
-     * send a StartupResponse to the parent.
-     */
-    private def handleStartupInternal(sender:ActorRef, message:Startup) {
-      config.reset(None)
-      config.set((a,loaded,c) => loaded(message.configRef))
-
-      doStartup(sender, message)
-
-      notifyAll(message,
-        () => sender ! StartupResponse(message),
-        () => throw new Exception("Error while starting the children")
-      )
-    }
-
-    /**
-     * Processes doShutdown, then notify all children.
-     * When all children responded with ShutdownResponse, then
-     * send a ShutdownResponse to the parent.
-     */
-    private def handleShutdownInternal(sender:ActorRef, message:Shutdown) {
-      doShutdown(sender, message)
-
-      notifyAll(message,
-        () => sender ! ShutdownResponse(message),
-        () => throw new Exception("Error while shutting down the children")
-      )
-    }
-
-    /**
-     * When overridden, processes startup logic for the actor.
-     */
-    def doStartup(sender:ActorRef, message:Startup) {
-    }
-
-    /**
-     * When overridden, processes shutdown logic for the actor.
-     */
-    def doShutdown(sender:ActorRef, message:Shutdown) {
-    }
-
-    /**
-     * Tries to get a value from the config.
-     * @param key The config key
-     * @param value The value-continuation
-     * @param error The error-continuation
-     */
-    def withConfigValue(key:String, value:Any => Unit, error:Exception => Unit) {
-      // @todo: Make the config just a special context
-      val request = ReadConfig(key)
-      expectResponse(request, (response, sender, handled) => {
-        response match {
-          case x:ReadConfigResponse =>
-            value(x.value)
-            handled()
-          case ErrorResponse(req, ex) => error(ex)
+          then.get.apply()
         }
       })
-      config.withResource((actor) => actor ! request, (error) => throw error)
-    }
 
-    /**
-     * Tries to write a value to the config.
-     * @param key The config key
-     * @param value The value to write
-     * @param success The success-continuation
-     * @param error The error-continuation
-     */
-    def setConfigValue(key:String, value:Any, success:() => Unit, error:Exception => Unit) {
-      // @todo: Make the config just a special context
-      val request = WriteConfig(key, value)
-      expectResponse(request, (response, sender, handled) => {
-        response match {
-          case x:WriteConfigResponse =>
-            success()
-            handled()
-          case ErrorResponse(req, ex) => error(ex)
-        }
-      })
-      config.withResource((actor) => actor ! request, (error) => throw error)
+      for(childActor <- remaining) {
+        childActor ! request
+      }
     }
+  }
+
+  /**
+   * Processes doStartup, then notify all children.
+   * When all children responded with StartupResponse, then
+   * send a StartupResponse to the parent.
+   */
+  private def handleStartupInternal(sender:ActorRef, message:Startup) {
+    config.reset(None)
+    config.set((a,loaded,c) => loaded(message.configRef))
+
+    doStartup(sender, message)
+
+    notifyAllChildren(message,
+      () => sender ! StartupResponse(message),
+      () => throw new Exception("Error while starting the children")
+    )
+  }
+
+  /**
+   * Processes doShutdown, then notify all children.
+   * When all children responded with ShutdownResponse, then
+   * send a ShutdownResponse to the parent.
+   */
+  private def handleShutdownInternal(sender:ActorRef, message:Shutdown) {
+    doShutdown(sender, message)
+
+    notifyAllChildren(message,
+      () => sender ! ShutdownResponse(message),
+      () => throw new Exception("Error while shutting down the children")
+    )
+  }
+
+  /**
+   * Tries to get a value from the config.
+   * @param key The config key
+   * @param value The value-continuation
+   * @param error The error-continuation
+   */
+  def withConfigValue(key:String, value:Any => Unit, error:Exception => Unit) {
+    // @todo: Make the config just a special context
+    val request = ReadConfig(key)
+    expectResponse(request, (response, sender, handled) => {
+      response match {
+        case x:ReadConfigResponse =>
+          value(x.value)
+          handled()
+        case ErrorResponse(req, ex) => error(ex)
+      }
+    })
+    config.withResource((actor) => actor ! request, (error) => throw error)
+  }
+
+  /**
+   * Tries to write a value to the config.
+   * @param key The config key
+   * @param value The value to write
+   * @param success The success-continuation
+   * @param error The error-continuation
+   */
+  def setConfigValue(key:String, value:Any, success:() => Unit, error:Exception => Unit) {
+    // @todo: Make the config just a special context
+    val request = WriteConfig(key, value)
+    expectResponse(request, (response, sender, handled) => {
+      response match {
+        case x:WriteConfigResponse =>
+          success()
+          handled()
+        case ErrorResponse(req, ex) => error(ex)
+      }
+    })
+    config.withResource((actor) => actor ! request, (error) => throw error)
   }
 }

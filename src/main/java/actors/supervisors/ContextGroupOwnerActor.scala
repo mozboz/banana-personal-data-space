@@ -1,6 +1,6 @@
 package actors.supervisors
 
-import actors.behaviors.{MessageHandler, Requester}
+import actors.behaviors.{BaseActor, MessageHandler, Requester}
 import akka.actor.{Props, ActorRef, Actor}
 import akka.event.LoggingReceive
 import events.{DisconnectProfile, ConnectProfile}
@@ -12,38 +12,28 @@ import scala.collection.mutable
 /**
  * Is responsible to spawn and stop context actors on request.
  */
-class ContextGroupOwnerActor extends Actor with Requester
-                                           with MessageHandler { // @todo: add "with SystemEvents"
+class ContextGroupOwnerActor extends BaseActor
+                             with MessageHandler { // @todo: add "with SystemEvents"
 
   val _managedContexts = new mutable.HashSet[String]
   val _runningContexts = new mutable.HashMap[String,ActorRef]
   val _profileResource = new BufferedResource[String, ActorRef]("Profile")
   var _configActor : ActorRef = null
 
-  def receive = LoggingReceive(handleResponse orElse {
+  def handleRequest = {
     case x: ConnectProfile =>  handleConnectProfile(sender(),x)
     case x: DisconnectProfile => handleDisconnectProfile(sender(), x)
-    case x: Startup => handleSetup(sender(), x)
-    case x: Shutdown => handleShutdown(sender(), x)
     case x: ManageContexts => handleManageContexts(sender(), x)
     case x: ReleaseContexts => handleReleaseContexts(sender(), x)
     case x: SpawnContext => handleSpawnContext(sender(), x)
     case x: ContextExists => handleContextExists(sender(), x)
-  })
-
-  def handleConnectProfile(sender:ActorRef, message:ConnectProfile) {
-    _profileResource.set((a,loaded,c) => loaded(message.profileRef))
   }
 
-  def handleDisconnectProfile(sender:ActorRef, message:DisconnectProfile) {
-    _profileResource.reset(None)
-  }
-
-  def handleSetup(sender:ActorRef, message:Startup) {
+  def doStartup(sender:ActorRef, message:Startup) {
     _configActor = message.configRef
   }
 
-  def handleShutdown(sender:ActorRef, message:Shutdown) {
+  def doShutdown(sender:ActorRef, message:Shutdown) {
     // @todo: Test if this is suitable
     var toStop = _runningContexts.size
     _runningContexts.foreach((a) => {
@@ -57,6 +47,14 @@ class ContextGroupOwnerActor extends Actor with Requester
         }
       })
     })
+  }
+
+  def handleConnectProfile(sender:ActorRef, message:ConnectProfile) {
+    _profileResource.set((a,loaded,c) => loaded(message.profileRef))
+  }
+
+  def handleDisconnectProfile(sender:ActorRef, message:DisconnectProfile) {
+    _profileResource.reset(None)
   }
 
   def handleManageContexts(sender:ActorRef, message:ManageContexts) {
