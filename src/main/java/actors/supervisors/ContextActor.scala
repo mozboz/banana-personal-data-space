@@ -56,7 +56,7 @@ class ContextActor extends Actor with Requester with Proxy  { // @todo: add "wit
     _contextBackend.withResource(
       (actor) => {
         actor ! message
-        sender ! SetupResponse(message)
+        sender ! StartupResponse(message)
       },
       (ex) => sender ! ErrorResponse(message, ex)
     )

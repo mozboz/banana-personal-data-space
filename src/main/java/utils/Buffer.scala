@@ -7,7 +7,8 @@ import scala.collection.mutable
  * @tparam TKey The type of the resource identifier
  * @tparam TResource The type of the resource
  */
-//@todo Add timeouts and limits (ringbuffer)
+// @todo: Add timeouts and limits (ringbuffer)
+// @todo: Find a way to make this persistent
 trait Buffer[TKey,TResource] extends Resource[TResource] {
 
   /**

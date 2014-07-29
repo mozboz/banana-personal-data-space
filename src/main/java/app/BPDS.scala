@@ -54,11 +54,11 @@ object BPDS extends App {
   _contextGroupAccessor ! Write("Key1", "Value1", "Context2")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context2")
 
-     /*
-  implicit val timeout = Timeout(5000)
+
+  implicit val timeout = Timeout(100)
   val future =  _contextGroupAccessor ? Read("Key2", "Context2")
   val result = Await.result(future, timeout.duration).asInstanceOf[ReadResponse]
-       */
+
 
   _contextGroupOwner ! Shutdown()
 }

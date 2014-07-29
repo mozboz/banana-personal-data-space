@@ -72,7 +72,7 @@ class ContextGroupOwnerActor extends Actor with Requester
 
     def handleSpawnedContext(context:ActorRef) {
       onResponseOf(Startup(_configActor),  context, self, {
-        case x:SetupResponse => sender ! SpawnContextResponse(message, context)
+        case x:StartupResponse => sender ! SpawnContextResponse(message, context)
         case x:ErrorResponse => sender ! ErrorResponse(message, x.ex)
       })
     }

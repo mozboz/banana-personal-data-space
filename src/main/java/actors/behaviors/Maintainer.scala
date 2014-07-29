@@ -5,10 +5,15 @@ import events.{DisconnectProfile, ConnectProfile}
 import requests._
 import utils.BufferedResource
 
+import scala.collection.mutable
 
-trait ContextManager extends Actor {
+
+trait Maintainer extends Actor {
 
   // @todo: finish this trait
+
+  private var _parentActor:ActorRef = null
+  private val _childActors = new mutable.HashSet[ActorRef]
 
   def profile = new BufferedResource[String, ActorRef]("Profile")
   /**
@@ -16,17 +21,9 @@ trait ContextManager extends Actor {
    */
   def handleResponse: Receive = new Receive {
     def isDefinedAt(x: Any) = x match {
-      case x: ConnectProfile => true
-      case x: DisconnectProfile => true
-      case x: ManageContexts => true
-      case x: ReleaseContexts => true
       case _ => false
     }
     def apply(x: Any) = x match {
-      case x: ConnectProfile =>  handleConnectProfile(sender(),x)
-      case x: DisconnectProfile => handleDisconnectProfile(sender(), x)
-      case x: ManageContexts => handleManageContexts(sender(), x)
-      case x: ReleaseContexts => handleReleaseContexts(sender(), x)
       case _ => throw new Exception("This function is not applicable to objects of type: " + x.getClass)
     }
   }

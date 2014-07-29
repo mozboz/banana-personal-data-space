@@ -38,7 +38,7 @@ class FilesystemContextActor extends Actor with Requester {
       case x:GetContextDataFilePathResponse =>
         _dataFolder = x.path
         self ! ConnectFile(_dataFolder + context.self.path.name + ".txt")
-        sender ! SetupResponse(message)
+        sender ! StartupResponse(message)
 
       case x:ErrorResponse => throw x.ex
     })
