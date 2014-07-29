@@ -2,8 +2,7 @@ package actors.supervisors
 
 import actors.behaviors._
 import actors.workers.FilesystemContextActor
-import akka.actor.{Props, Actor, ActorRef}
-import akka.event.LoggingReceive
+import akka.actor.{Props, ActorRef}
 import events.{DisconnectContextBackend, ConnectContextBackend}
 import requests._
 import utils.BufferedResource
@@ -21,7 +20,7 @@ import scala.collection.mutable
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextActor extends BaseActor with Proxy  { // @todo: add "with SystemEvents"
+class ContextActor extends BaseActor with Proxy  {
 
   // @todo: Implement the metadata stuff
   private val _referencedContexts = new mutable.HashMap[String, ActorRef]
@@ -53,7 +52,7 @@ class ContextActor extends BaseActor with Proxy  { // @todo: add "with SystemEve
     // @todo: Which URI does this context have?
     _contextBackend.withResource(
       (actor) => {
-        actor ! message
+        actor ! message // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
         sender ! StartupResponse(message)
       },
       (ex) => sender ! ErrorResponse(message, ex)
@@ -61,15 +60,12 @@ class ContextActor extends BaseActor with Proxy  { // @todo: add "with SystemEve
   }
 
   def doShutdown(sender:ActorRef, message:Shutdown) {
-  // @todo: Test if Shutdown behavior is suitable
     _contextBackend.withResource(
       (actor) => {
-        actor ! message
-        onResponseOf(message, actor, self, {
-          case x: ShutdownResponse =>
-            self ! DisconnectContextBackend
-            sender ! ShutdownResponse(message)
-          case x: ErrorResponse => sender ! ErrorResponse(message, x.ex)
+        actor ! message // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
+        aggregateSome(message, List(actor), (response,sender,done) => {
+          self ! DisconnectContextBackend
+          done()
         })
       },
       (ex) => throw ex)

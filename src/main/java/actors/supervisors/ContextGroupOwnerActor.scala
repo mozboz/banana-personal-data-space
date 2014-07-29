@@ -1,8 +1,7 @@
 package actors.supervisors
 
-import actors.behaviors.{BaseActor, MessageHandler, Requester}
-import akka.actor.{Props, ActorRef, Actor}
-import akka.event.LoggingReceive
+import actors.behaviors.{BaseActor, MessageHandler}
+import akka.actor.{Props, ActorRef}
 import events.{DisconnectProfile, ConnectProfile}
 import requests._
 import utils.BufferedResource
@@ -34,7 +33,7 @@ class ContextGroupOwnerActor extends BaseActor
   }
 
   def doShutdown(sender:ActorRef, message:Shutdown) {
-    // @todo: Test if this is suitable
+    // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
     var toStop = _runningContexts.size
     _runningContexts.foreach((a) => {
       onResponseOf(message, a._2, self, (response) => {
@@ -69,6 +68,7 @@ class ContextGroupOwnerActor extends BaseActor
   def handleSpawnContext(sender:ActorRef, message:SpawnContext) {
 
     def handleSpawnedContext(context:ActorRef) {
+      // @todo: Check how to do that using the initialization-hierarchy
       onResponseOf(Startup(_configActor),  context, self, {
         case x:StartupResponse => sender ! SpawnContextResponse(message, context)
         case x:ErrorResponse => sender ! ErrorResponse(message, x.ex)
@@ -157,10 +157,12 @@ class ContextGroupOwnerActor extends BaseActor
       yes = (actorRef) => yes(Some(actorRef)),
       no = () => {
         _profileResource.withResource((profileActorRef) => {
-          onResponseOf(ContextExists(contextKey), profileActorRef, self, {
-            case ContextExistsResponse(x, true) => yes(None)
-            case ContextExistsResponse(x, false) => no()
-            case x: ErrorResponse => error(new Exception("Error while checking if context " + contextKey + " exists.", x.ex))
+          aggregateOne(ContextExists(contextKey), profileActorRef, (response, sender, done) => {
+            response match {
+              case ContextExistsResponse(x, true) => yes(None)
+              case ContextExistsResponse(x, false) => no()
+              case x: ErrorResponse => error(new Exception("Error while checking if context " + contextKey + " exists.", x.ex))
+            }
           })
         },
         (exception) => error(exception))

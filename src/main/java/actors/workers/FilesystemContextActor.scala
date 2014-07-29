@@ -33,7 +33,7 @@ class FilesystemContextActor extends Actor with Requester {
   })
 
   private def handleSetup(sender:ActorRef, message:Startup) {
-
+    // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
     onResponseOf(GetContextDataFilePath(context.self.path.name), message.configRef, self, {
       case x:GetContextDataFilePathResponse =>
         _dataFolder = x.path

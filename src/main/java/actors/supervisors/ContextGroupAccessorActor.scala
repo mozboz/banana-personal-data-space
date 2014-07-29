@@ -132,10 +132,11 @@ class ContextGroupAccessorActor extends BaseActor {
       // @todo: Notify "someone" about the missing dependency (maybe throttled)
     }
 
-    onResponseOf(
-    SpawnContext(contextKey), contextGroupOwner, self, {
-      case x: SpawnContextResponse => started(x.actorRef)
-      case x: ErrorResponse => error(new Exception("Error while starting the context " + contextKey, x.ex))
+    aggregateOne(SpawnContext(contextKey), contextGroupOwner, (response, sender, done) => {
+      response match {
+        case x: SpawnContextResponse => started(x.actorRef)
+        case x: ErrorResponse => error(new Exception("Error while starting the context " + contextKey, x.ex))
+      }
     })
   }
 
@@ -146,10 +147,11 @@ class ContextGroupAccessorActor extends BaseActor {
                               dataKey: String,
                               data: (String) => Unit,
                               error: (Exception) => Unit) {
-    onResponseOf(
-    ReadFromContext(dataKey), actorRef, self, {
-      case x: ReadResponse => data(x.data)
-      case x: ErrorResponse => error(new Exception("Error while reading from context. Data key: " + dataKey, x.ex))
+    aggregateOne(ReadFromContext(dataKey), actorRef, (response, sender, done) => {
+      response match {
+        case x: ReadResponse => data(x.data)
+        case x: ErrorResponse => error(new Exception("Error while reading from context. Data key: " + dataKey, x.ex))
+      }
     })
   }
 
@@ -161,10 +163,11 @@ class ContextGroupAccessorActor extends BaseActor {
                              data: () => String,
                              success: () => Unit,
                              error: (Exception) => Unit) {
-    onResponseOf(
-    WriteToContext(dataKey, data()), actorRef, self, {
-      case x: WriteResponse => success()
-      case x: ErrorResponse => error(new Exception("Error while writing to context. Data key: " + dataKey, x.ex))
+    aggregateOne(WriteToContext(dataKey, data()), actorRef, (response, sender, done) => {
+      response match {
+        case x: WriteResponse => success()
+        case x: ErrorResponse => error(new Exception("Error while writing to context. Data key: " + dataKey, x.ex))
+      }
     })
   }
 }

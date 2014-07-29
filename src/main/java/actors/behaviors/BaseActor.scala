@@ -148,9 +148,38 @@ abstract class BaseActor extends Actor
    */
   def aggregateAllChildren(request:Request,
                            aggregator:(Response, ActorRef, () => Unit) => Unit,
-                           then:Option[() => Unit] = None,
-                           error:Option[() => Unit] = None) {
+                           then:() => Unit = () => {},
+                           error:() => Unit = () => {}) {
     aggregateSome(request, _children, aggregator, then, error)
+  }
+
+  /**
+   * Sends the specified request to the recipient and catch the arriving response
+   * @param request The request
+   * @param aggregator The aggregator which gets the response and a "completed" function as parameters
+   * @param then The continuation that should be executed when the aggregation finished
+   * @param error The error continuation
+   */
+  def aggregateOne(request:Request,
+                    one:ActorRef,
+                    aggregator:(Response, ActorRef, () => Unit) => Unit,
+                    then:() => Unit = () => {},
+                    error:() => Unit = () => {}) {
+
+    // Wraps the aggregator in a way that 'done' is called implicitly if not done from
+    // within the handler
+    val aggregatorWrapper = (response:Response, actor:ActorRef, done:() => Unit) => {
+      var alreadyDone = false
+      val doneWrapper = () => {
+        if (!alreadyDone) {
+          done()
+          alreadyDone = true
+        }
+      }
+      aggregator(response, actor, doneWrapper)
+      doneWrapper()
+    }
+    aggregateSome(request, List(one), aggregatorWrapper, then, error)
   }
 
   /**
@@ -163,13 +192,13 @@ abstract class BaseActor extends Actor
   def aggregateSome(request:Request,
                     some:Iterable[ActorRef],
                     aggregator:(Response, ActorRef, () => Unit) => Unit,
-                    then:Option[() => Unit] = None,
-                    error:Option[() => Unit] = None) {
+                    then:() => Unit = () => {},
+                    error:() => Unit = () => {}) {
     val remaining = new mutable.HashSet[ActorRef]
     some.foreach(a => remaining.add(a))
 
-    if (remaining.size == 0 && then.isDefined) {
-      then.get.apply()
+    if (remaining.size == 0) {
+      then.apply()
     } else {
       var cancelled = false
 
@@ -188,7 +217,7 @@ abstract class BaseActor extends Actor
           if (!cancelled) // already called when cancelled
             completed()
 
-          then.get.apply()
+          then.apply()
         }
       })
 
@@ -235,18 +264,13 @@ abstract class BaseActor extends Actor
    * @param value The value-continuation
    * @param error The error-continuation
    */
-  def withConfigValue(key:String, value:Any => Unit, error:Exception => Unit) {
-    // @todo: Make the config just a special context
-    val request = ReadConfig(key)
-    expectResponse(request, (response, sender, handled) => {
-      response match {
-        case x:ReadConfigResponse =>
-          value(x.value)
-          handled()
-        case ErrorResponse(req, ex) => error(ex)
-      }
-    })
-    config.withResource((actor) => actor ! request, (error) => throw error)
+  def readConfig(key:String, value:Any => Unit, error:Exception => Unit) {
+    config.withResource(
+      (actor) => aggregateSome(ReadConfig(key), List(actor), (response,sender,done) => {
+        value(response.asInstanceOf[ReadConfigResponse].value)
+        done()
+      }),
+      (exception) => throw exception)
   }
 
   /**
@@ -256,17 +280,12 @@ abstract class BaseActor extends Actor
    * @param success The success-continuation
    * @param error The error-continuation
    */
-  def setConfigValue(key:String, value:Any, success:() => Unit, error:Exception => Unit) {
-    // @todo: Make the config just a special context
-    val request = WriteConfig(key, value)
-    expectResponse(request, (response, sender, handled) => {
-      response match {
-        case x:WriteConfigResponse =>
-          success()
-          handled()
-        case ErrorResponse(req, ex) => error(ex)
-      }
-    })
-    config.withResource((actor) => actor ! request, (error) => throw error)
+  def writeConfig(key:String, value:Any, success:() => Unit, error:Exception => Unit) {
+    config.withResource(
+      (actor) => aggregateSome(WriteConfig(key, value), List(actor), (response,sender,done) => {
+        success()
+        done()
+      }),
+      (exception) => throw exception)
   }
 }
