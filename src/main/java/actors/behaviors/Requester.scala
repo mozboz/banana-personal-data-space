@@ -19,12 +19,12 @@ trait Requester extends Actor {
    * * ActorRef - the sending actor
    * * HandledCallback - a callback which must be called when all responses have been received.
    */
-  //type ResponseContinuation = (Response, ActorRef, () => Unit) => Unit
+  type ResponseContinuation = (Response, ActorRef, () => Unit) => Unit
 
   /**
    * Maps the request id to all waiting response continuations for the request
    */
-  private val _waiting : mutable.HashMap[UUID, (Response, ActorRef, () => Unit) => Unit] = new mutable.HashMap[UUID, (Response, ActorRef, () => Unit) => Unit]()
+  private val _waiting : mutable.HashMap[UUID, ResponseContinuation] = new mutable.HashMap[UUID, ResponseContinuation]()
 
   /**
    * Defines a partial Receive function which can be used by an actor.
@@ -35,15 +35,6 @@ trait Requester extends Actor {
       case x:Response =>  processResponse(x, sender())
       case _ => throw new Exception("This function is not applicable to objects of type: " + x.getClass)
     }
-  }
-
-  /**
-   * Adds a onResponse continuation to the _waiting map.
-   * @param requestId The id of the request
-   * @param onResponse The response continuation
-   */
-  private def addWaiting(requestId:UUID, onResponse:(Response, ActorRef, () => Unit) => Unit) {
-    _waiting.put(requestId, onResponse)
   }
 
   /**
@@ -79,26 +70,22 @@ trait Requester extends Actor {
 
 
   /**
-   * Registers a continuation which is executed whenever a response
-   * to the issued request arrives. To stop handling the responses
-   * of a specific request, the handled-callback must be called from
-   * within the continuation.
-   * To stop listen to specific responses earlier, the stopListen function can be called.
-   * @param request The request message
-   * @param onResponse The on-response continuation
-   */
-  def expectResponse(request:Request, onResponse:(Response, ActorRef, () => Unit) => Unit) {
-    addWaiting(request.messageId, onResponse)
-  }
-
-  /**
    * Stops listening to the responses for the supplied request id.
    * @param requestId The request id.
    */
   def stopListen(requestId:UUID) {
     _waiting.remove(requestId)
   }
-  
+
+  /**
+   * Starts listening to responses to the specified request id.
+   * @param requestId The id of the request
+   * @param onResponse The response continuation
+   */
+  private def startListen(requestId:UUID, onResponse:ResponseContinuation) {
+    _waiting.put(requestId, onResponse)
+  }
+
   /**
    * Issues a request and executes a continuation on its response.
    * @param request The request
@@ -108,10 +95,23 @@ trait Requester extends Actor {
    */
   @Deprecated
   def onResponseOf(request: Request, to: ActorRef, sender:ActorRef, onResponse: (Response) => (Unit)) {
-    addWaiting(request.messageId, (response, sender, handled) => {
+    startListen(request.messageId, (response, sender, handled) => {
       onResponse(response)
       handled()
     })
     to.tell(request, sender)
+  }
+
+  /**
+   * Registers a continuation which is executed whenever a response
+   * to the issued request arrives. To stop handling the responses
+   * of a specific request, the handled-callback must be called from
+   * within the continuation.
+   * To stop listen to specific responses earlier, the stopListen function can be called.
+   * @param request The request message
+   * @param onResponse The on-response continuation
+   */
+  def expectResponse(request:Request, onResponse:ResponseContinuation) {
+    startListen(request.messageId, onResponse)
   }
 }

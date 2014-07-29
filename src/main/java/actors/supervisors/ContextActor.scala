@@ -23,7 +23,6 @@ import scala.collection.immutable.HashSet
  */
 class ContextActor extends Actor with Requester with Proxy {
 
-  // @todo: Implement aggregation
   // @todo: Implement the metadata stuff
   private val _referencedContexts = new HashSet[String]
   private val _referencedByContexts = new HashSet[String]
@@ -69,10 +68,9 @@ class ContextActor extends Actor with Requester with Proxy {
       (actor) => {
         actor ! message
         onResponseOf(message, actor, self, {
-          case x: ShutdownResponse => {
+          case x: ShutdownResponse =>
             self ! DisconnectContextBackend
             sender ! ShutdownResponse(message)
-          }
           case x: ErrorResponse => sender ! ErrorResponse(message, x.ex)
         })
       },

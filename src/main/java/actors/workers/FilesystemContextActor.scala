@@ -68,7 +68,11 @@ class FilesystemContextActor extends Actor with Requester {
 
   def handleWriteToContext(sender:ActorRef, message:WriteToContext) {
     appendToDataFile(message.key, message.value,
-      (indexEntry) => _contextIndex.add(indexEntry),
+      (indexEntry) => try {
+        _contextIndex.add(indexEntry)
+      } catch {
+        case x:Exception => sender ! ErrorResponse(message, x)
+      },
       // @todo: There should be two types of write response: 'accepted' and 'written'
       // the last should be sent here 'whenWritten'
       (exception) => sender ! ErrorResponse(message, exception)
