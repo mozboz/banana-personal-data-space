@@ -1,12 +1,100 @@
 package actors.http
 
-/**
- * Created with IntelliJ IDEA.
- * User: james
- * Date: 29/07/14
- * Time: 03:06
- * To change this template use File | Settings | File Templates.
- */
-class HttpActor {
+import scala.concurrent.duration._
+import akka.pattern.ask
+import akka.util.Timeout
+import akka.actor._
+import spray.can.Http
+import spray.can.server.Stats
+import spray.util._
+import spray.http._
+import HttpMethods._
+import MediaTypes._
+import requests._
+import actors.behaviors.Requester
+import akka.event.LoggingReceive
+import spray.http.HttpRequest
+import spray.http.HttpResponse
+import requests.SetProfileAccessor
+import requests.SpawnContextResponse
+import spray.http.Timedout
+import requests.ErrorResponse
+
+class HttpActor extends Actor with ActorLogging with Requester {
+  implicit val timeout: Timeout = 1 // for the actor 'asks'
+  import context.dispatcher // ExecutionContext for the futures and scheduler
+  var profileAccessor: ActorRef = _
+
+  def receive =  LoggingReceive(handleResponse orElse {
+    // when a new connection comes in we register ourselves as the connection handler
+    case _: Http.Connected => sender ! Http.Register(self)
+
+    case HttpRequest(GET, Uri.Path(path), _, _, _) =>
+      val s = sender()
+      val req = Read(path.stripPrefix("/"), "Context2")
+      onResponseOf(req ,profileAccessor,self,  {
+        case x:ReadResponse => s ! HttpResponse(entity = HttpEntity(`text/html`, x.data))
+        case x:ErrorResponse => s ! ErrorResponse(req, x.ex)
+      })
+
+    case SetProfileAccessor(profileActor) => {
+      profileAccessor = profileActor
+    }
+      /*
+    case HttpRequest(GET, Uri.Path("/crash"), _, _, _) =>
+      sender ! HttpResponse(entity = "About to throw an exception in the request handling actor, " +
+        "which triggers an actor restart")
+      sys.error("BOOM!")
+
+    case HttpRequest(GET, Uri.Path(path), _, _, _) if path startsWith "/timeout" =>
+      log.info("Dropping request, triggering a timeout")
+
+    case HttpRequest(GET, Uri.Path("/stop"), _, _, _) =>
+      sender ! HttpResponse(entity = "Shutting down in 1 second ...")
+      sender ! Http.Close
+      context.system.scheduler.scheduleOnce(1.second) { context.system.shutdown() }
+
+    case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
+
+    case Timedout(HttpRequest(_, Uri.Path("/timeout/timeout"), _, _, _)) =>
+      log.info("Dropping Timeout message")
+
+    case Timedout(HttpRequest(method, uri, _, _, _)) =>
+      sender ! HttpResponse(
+        status = 500,
+        entity = "The " + method + " request to '" + uri + "' has timed out..."
+      )
+        */
+
+  })
+
+  ////////////// helpers //////////////
+
+  lazy val index = HttpResponse(
+    entity = HttpEntity(`text/html`,
+      """<html>
+        <body>
+          <h1>Say hello to <i>spray-can</i>!</h1>
+          <p>Defined resources:</p>
+          <ul>
+            <li><a href="/ping">/ping</a></li>
+            <li><a href="/stream">/stream</a></li>
+            <li><a href="/server-stats">/server-stats</a></li>
+            <li><a href="/crash">/crash</a></li>
+            <li><a href="/timeout">/timeout</a></li>
+            <li><a href="/timeout/timeout">/timeout/timeout</a></li>
+            <li><a href="/stop">/stop</a></li>
+          </ul>
+          <p>Test file upload</p>
+          <form action ="/file-upload" enctype="multipart/form-data" method="post">
+            <input type="file" name="datafile" multiple=""></input>
+            <br/>
+            <input type="submit">Submit</input>
+          </form>
+        </body>
+      </html>"""
+    )
+  )
+
 
 }

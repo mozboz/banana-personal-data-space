@@ -2,13 +2,16 @@ package app
 
 
 import actors.supervisors.{ConfigurationActor, ContextGroupAccessorActor, ContextGroupOwnerActor, ProfileActor}
-import akka.actor.{Props, ActorSystem}
+import akka.actor.{ActorRef, Props, ActorSystem}
 import com.typesafe.config.{Config, ConfigFactory}
 import events.{ConnectContextGroupOwner, ConnectProfile}
 import requests._
 import concurrent.Await
 import akka.pattern.ask
 import akka.util.Timeout
+import actors.http.HttpActor
+import spray.can.Http
+import akka.io.IO
 
 // import akka.util.Timeout
 import scala.concurrent.duration._
@@ -36,6 +39,9 @@ object BPDS extends App {
   val _configurationActor = system.actorOf(Props[ConfigurationActor], "ConfigurationActor")
   val _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
 
+  val _httpActor = system.actorOf(Props[HttpActor], "HttpActor")
+
+
   _profileActor ! Setup(_configurationActor)
 
   val _contextGroupOwner = system.actorOf(Props[ContextGroupOwnerActor], "ContextGroupOwner")
@@ -54,11 +60,23 @@ object BPDS extends App {
   _contextGroupAccessor ! Write("Key1", "Value1", "Context2")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context2")
 
+
+  _contextGroupAccessor ! Read("Key2", "Context2")
+
+
+
+
      /*
   implicit val timeout = Timeout(5000)
   val future =  _contextGroupAccessor ? Read("Key2", "Context2")
   val result = Await.result(future, timeout.duration).asInstanceOf[ReadResponse]
        */
 
-  _contextGroupOwner ! Shutdown()
+  IO(Http) ! Http.Bind(_httpActor, interface = "0.0.0.0", port = 8080)
+
+  _httpActor ! SetProfileAccessor(_contextGroupAccessor)
+
+
+
+  // _contextGroupOwner ! Shutdown()
 }
