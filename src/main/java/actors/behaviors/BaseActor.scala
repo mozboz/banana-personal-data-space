@@ -39,7 +39,8 @@ abstract class BaseActor extends Actor
 
   private val _children = new mutable.HashSet[ActorRef]
 
-  // @todo: Add dependency management and discovery
+  // @todo: Add dependency management and discovery ->
+  // @todo: Create a function which takes a list of Request objects and matches them against ever isDefinedAt to get a list of supported Requests.
 
   /**
    * Partial function which handles the configuration system messages.
@@ -65,6 +66,7 @@ abstract class BaseActor extends Actor
       case x: Shutdown => handleShutdownInternal(sender(), x)
       case x: AddChildren => handleAddChildren(sender(), x)
       case x: RemoveChildren => handleRemoveChildren(sender(), x)
+      case _ => throw new Exception("This function can not be applied to a value of " + x.getClass)
     }
   }
 
@@ -106,6 +108,13 @@ abstract class BaseActor extends Actor
                          then:() => Unit,
                          error:() => Unit) {
     notifySome(request, _children, then, error)
+  }
+
+  def notifyOne(request:Request,
+                one:ActorRef,
+                then: () => Unit,
+                error:() => Unit) {
+    notifySome(request, List(one), then, error)
   }
 
   /**

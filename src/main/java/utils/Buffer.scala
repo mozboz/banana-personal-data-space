@@ -54,7 +54,7 @@ trait Buffer[TKey,TResource] extends Resource[TResource] {
    * Unloads the resource and forces a reload of the resource on the next enqueued action
    */
   def reset(additionalActions:Option[(TResource) => Unit]) {
-    if (!additionalActions.isEmpty && _available.get().get)
+    if (additionalActions.nonEmpty && _available.get().get)
       additionalActions.get.apply(_resource.get().get)
 
     _available.set(false)

@@ -1,8 +1,7 @@
 
 package actors.behaviors
 
-import akka.actor.{Actor, ActorRef}
-import requests.{ErrorResponse, ReadResponse, ReadFromContext}
+import akka.actor.ActorRef
 
 trait Proxy extends BaseActor{
   /**
@@ -15,9 +14,5 @@ trait Proxy extends BaseActor{
     aggregateOne(request, to, (response, sender, done) => {
       original ! response
     })
-    /*
-    onResponseOf(request, to, this.self, {
-      case x => sender ! x
-    })*/
   }
 }

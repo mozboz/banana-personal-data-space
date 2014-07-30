@@ -15,24 +15,21 @@ import events.{ConnectFile, DisconnectFile}
 import requests._
 import utils.BufferedResource
 
-class FilesystemContextActor extends Actor with Requester {
+class FilesystemContextActor extends BaseActor {
 
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
 
   private var _contextIndex = new KeyMapIndex(context.self.path.name)
   private var _dataFolder = ""
 
-
-  def receive = LoggingReceive(handleResponse orElse {
-    case x:Startup => handleSetup(sender(), x)
+  def handleRequest = {
     case x:ConnectFile => handleConnectFile(sender(), x)
     case x:DisconnectFile => handleDisconnectFile(sender(), x)
-    case x:Shutdown => handleShutdown(sender(), x)
     case x:ReadFromContext => handleReadFromContext(sender(), x)
     case x:WriteToContext => handleWriteToContext(sender(), x)
-  })
+  }
 
-  private def handleSetup(sender:ActorRef, message:Startup) {
+  def doStartup(sender:ActorRef, message:Startup) {
     // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
     onResponseOf(GetContextDataFilePath(context.self.path.name), message.configRef, self, {
       case x:GetContextDataFilePathResponse =>
@@ -44,6 +41,11 @@ class FilesystemContextActor extends Actor with Requester {
     })
   }
 
+  def doShutdown(sender:ActorRef, message:Shutdown) {
+    self ! DisconnectFile()
+    sender ! ShutdownResponse
+  }
+
   private def handleConnectFile(sender:ActorRef, message:ConnectFile) {
     _contextIndex = new KeyMapFilesystemPersistence().load(_dataFolder, context.self.path.name)
     _fileChannelResource.set((a,b,c) => b.apply(new RandomAccessFile(message.path, "rw").getChannel))
@@ -53,11 +55,6 @@ class FilesystemContextActor extends Actor with Requester {
     _fileChannelResource.reset(Some((channel) => channel.close()))
     new KeyMapFilesystemPersistence().save(_contextIndex, _dataFolder)
     // @todo: There should be a way to notify the caller about the failure of the clean-up action (Request/Response?)
-  }
-
-  private def handleShutdown(sender:ActorRef, message:Shutdown) {
-    self ! DisconnectFile()
-    sender ! ShutdownResponse
   }
 
   private def handleReadFromContext(sender:ActorRef, message:ReadFromContext) {
