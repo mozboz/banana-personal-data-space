@@ -1,8 +1,7 @@
 package actors.supervisors
 
-import actors.behaviors.{MessageHandler, Requester}
-import akka.actor.{Props, ActorRef, Actor}
-import akka.event.LoggingReceive
+import actors.behaviors.{BaseActor, MessageHandler}
+import akka.actor.{Props, ActorRef}
 import events.{DisconnectProfile, ConnectProfile}
 import requests._
 import utils.BufferedResource
@@ -12,39 +11,29 @@ import scala.collection.mutable
 /**
  * Is responsible to spawn and stop context actors on request.
  */
-class ContextGroupOwnerActor extends Actor with Requester
-                                           with MessageHandler {
+class ContextGroupOwnerActor extends BaseActor
+                             with MessageHandler { // @todo: add "with SystemEvents"
 
   val _managedContexts = new mutable.HashSet[String]
   val _runningContexts = new mutable.HashMap[String,ActorRef]
   val _profileResource = new BufferedResource[String, ActorRef]("Profile")
   var _configActor : ActorRef = null
 
-  def receive = LoggingReceive(handleResponse orElse {
+  def handleRequest = {
     case x: ConnectProfile =>  handleConnectProfile(sender(),x)
     case x: DisconnectProfile => handleDisconnectProfile(sender(), x)
-    case x: Setup => handleSetup(sender(), x)
-    case x: Shutdown => handleShutdown(sender(), x)
     case x: ManageContexts => handleManageContexts(sender(), x)
     case x: ReleaseContexts => handleReleaseContexts(sender(), x)
     case x: SpawnContext => handleSpawnContext(sender(), x)
     case x: ContextExists => handleContextExists(sender(), x)
-  })
-
-  def handleConnectProfile(sender:ActorRef, message:ConnectProfile) {
-    _profileResource.set((a,loaded,c) => loaded(message.profileRef))
   }
 
-  def handleDisconnectProfile(sender:ActorRef, message:DisconnectProfile) {
-    _profileResource.reset(None)
+  def doStartup(sender:ActorRef, message:Startup) {
+    _configActor = message.configRef
   }
 
-  def handleSetup(sender:ActorRef, message:Setup) {
-    _configActor = message.configActor
-  }
-
-  def handleShutdown(sender:ActorRef, message:Shutdown) {
-    // @todo: Test if this is suitable
+  def doShutdown(sender:ActorRef, message:Shutdown) {
+    // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
     var toStop = _runningContexts.size
     _runningContexts.foreach((a) => {
       onResponseOf(message, a._2, self, (response) => {
@@ -59,6 +48,14 @@ class ContextGroupOwnerActor extends Actor with Requester
     })
   }
 
+  def handleConnectProfile(sender:ActorRef, message:ConnectProfile) {
+    _profileResource.set((a,loaded,c) => loaded(message.profileRef))
+  }
+
+  def handleDisconnectProfile(sender:ActorRef, message:DisconnectProfile) {
+    _profileResource.reset(None)
+  }
+
   def handleManageContexts(sender:ActorRef, message:ManageContexts) {
     message.contexts.foreach((contextKey) => _managedContexts.add(contextKey))
     sender ! ManageContextsResponse(message, message.contexts)
@@ -71,8 +68,9 @@ class ContextGroupOwnerActor extends Actor with Requester
   def handleSpawnContext(sender:ActorRef, message:SpawnContext) {
 
     def handleSpawnedContext(context:ActorRef) {
-      onResponseOf(Setup(_configActor),  context, self, {
-        case x:SetupResponse => sender ! SpawnContextResponse(message, context)
+      // @todo: Check how to do that using the initialization-hierarchy
+      onResponseOf(Startup(_configActor),  context, self, {
+        case x:StartupResponse => sender ! SpawnContextResponse(message, context)
         case x:ErrorResponse => sender ! ErrorResponse(message, x.ex)
       })
     }
@@ -159,10 +157,12 @@ class ContextGroupOwnerActor extends Actor with Requester
       yes = (actorRef) => yes(Some(actorRef)),
       no = () => {
         _profileResource.withResource((profileActorRef) => {
-          onResponseOf(ContextExists(contextKey), profileActorRef, self, {
-            case ContextExistsResponse(x, true) => yes(None)
-            case ContextExistsResponse(x, false) => no()
-            case x: ErrorResponse => error(new Exception("Error while checking if context " + contextKey + " exists.", x.ex))
+          aggregateOne(ContextExists(contextKey), profileActorRef, (response, sender, done) => {
+            response match {
+              case ContextExistsResponse(x, true) => yes(None)
+              case ContextExistsResponse(x, false) => no()
+              case x: ErrorResponse => error(new Exception("Error while checking if context " + contextKey + " exists.", x.ex))
+            }
           })
         },
         (exception) => error(exception))

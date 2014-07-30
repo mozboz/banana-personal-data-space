@@ -25,7 +25,7 @@ import utils.{ResourceManager, BufferedResource}
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextGroupAccessorActor extends Actor with Requester {
+class ContextGroupAccessorActor extends BaseActor {
 
   /**
    * Represents a future for the context group owner actor. This actor ref is necessary to
@@ -46,20 +46,25 @@ class ContextGroupAccessorActor extends Actor with Requester {
     })
 
 
-  def receive = LoggingReceive(handleResponse orElse {
-    case x: Setup => handleSetup(sender(), x)
+  def handleRequest = {
     case x: ContextStopped => handleContextStopped(sender(), x)
     case x: ConnectContextGroupOwner => handleConnectContextGroupOwner(sender(),x)
     case x: DisconnectContextGroupOwner => handleDisconnectContextOwner(sender(), x)
-    // @todo: Should be a request as confirmation is required
-    case x: Shutdown => handleShutdown(sender(), x)
-
     case x: Read => handleRead(sender(), x)
     case x: Write => handleWrite(sender(), x)
-  })
+  }
 
-  private def handleSetup(sender: ActorRef, message: Setup) {
+  def doStartup(sender: ActorRef, message: Startup) {
 
+  }
+
+  def doShutdown(sender:ActorRef, message:Shutdown) {
+    _contextResourceManager.keys().foreach(
+      (key) => _contextResourceManager
+        .get(key)
+        .withResource(
+          (res) => res ! message,
+          (ex) => throw ex))
   }
 
   private def handleContextStopped(sender: ActorRef, message:ContextStopped) {
@@ -95,15 +100,6 @@ class ContextGroupAccessorActor extends Actor with Requester {
     )
   }
 
-  private def handleShutdown(sender:ActorRef, message:Shutdown) {
-    _contextResourceManager.keys().foreach(
-      (key) => _contextResourceManager
-        .get(key)
-        .withResource(
-          (res) => res ! message,
-          (ex) => throw ex))
-  }
-
   private def handleDisconnectContextOwner(sender:ActorRef, message:DisconnectContextGroupOwner) {
     _lazyContextGroupOwner.reset(None)
   }
@@ -136,10 +132,11 @@ class ContextGroupAccessorActor extends Actor with Requester {
       // @todo: Notify "someone" about the missing dependency (maybe throttled)
     }
 
-    onResponseOf(
-    SpawnContext(contextKey), contextGroupOwner, self, {
-      case x: SpawnContextResponse => started(x.actorRef)
-      case x: ErrorResponse => error(new Exception("Error while starting the context " + contextKey, x.ex))
+    aggregateOne(SpawnContext(contextKey), contextGroupOwner, (response, sender, done) => {
+      response match {
+        case x: SpawnContextResponse => started(x.actorRef)
+        case x: ErrorResponse => error(new Exception("Error while starting the context " + contextKey, x.ex))
+      }
     })
   }
 
@@ -150,10 +147,11 @@ class ContextGroupAccessorActor extends Actor with Requester {
                               dataKey: String,
                               data: (String) => Unit,
                               error: (Exception) => Unit) {
-    onResponseOf(
-    ReadFromContext(dataKey), actorRef, self, {
-      case x: ReadResponse => data(x.data)
-      case x: ErrorResponse => error(new Exception("Error while reading from context. Data key: " + dataKey, x.ex))
+    aggregateOne(ReadFromContext(dataKey), actorRef, (response, sender, done) => {
+      response match {
+        case x: ReadResponse => data(x.data)
+        case x: ErrorResponse => error(new Exception("Error while reading from context. Data key: " + dataKey, x.ex))
+      }
     })
   }
 
@@ -165,10 +163,11 @@ class ContextGroupAccessorActor extends Actor with Requester {
                              data: () => String,
                              success: () => Unit,
                              error: (Exception) => Unit) {
-    onResponseOf(
-    WriteToContext(dataKey, data()), actorRef, self, {
-      case x: WriteResponse => success()
-      case x: ErrorResponse => error(new Exception("Error while writing to context. Data key: " + dataKey, x.ex))
+    aggregateOne(WriteToContext(dataKey, data()), actorRef, (response, sender, done) => {
+      response match {
+        case x: WriteResponse => success()
+        case x: ErrorResponse => error(new Exception("Error while writing to context. Data key: " + dataKey, x.ex))
+      }
     })
   }
 }

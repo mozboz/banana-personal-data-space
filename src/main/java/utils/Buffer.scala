@@ -7,7 +7,8 @@ import scala.collection.mutable
  * @tparam TKey The type of the resource identifier
  * @tparam TResource The type of the resource
  */
-//@todo Add timeouts and limits (ringbuffer)
+// @todo: Add timeouts and limits (ringbuffer)
+// @todo: Find a way to make this persistent
 trait Buffer[TKey,TResource] extends Resource[TResource] {
 
   /**
@@ -53,14 +54,12 @@ trait Buffer[TKey,TResource] extends Resource[TResource] {
    * Unloads the resource and forces a reload of the resource on the next enqueued action
    */
   def reset(additionalActions:Option[(TResource) => Unit]) {
+    if (!additionalActions.isEmpty && _available.get().get)
+      additionalActions.get.apply(_resource.get().get)
+
     _available.set(false)
     _failState.set(false)
     _initialized.set(false)
-
-    if (additionalActions.isEmpty)
-      return
-
-    additionalActions.get.apply(_resource.get().get)
   }
 
   /**

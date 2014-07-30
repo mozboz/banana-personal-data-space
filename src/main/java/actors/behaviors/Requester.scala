@@ -111,7 +111,7 @@ trait Requester extends Actor {
    * @param request The request message
    * @param onResponse The on-response continuation
    */
-  def expectResponse(request:Request, onResponse:ResponseContinuation) {
+  def expectResponse(request:Request, onResponse:(Response, ActorRef, () => Unit) => Unit) {
     startListen(request.messageId, onResponse)
   }
 }
