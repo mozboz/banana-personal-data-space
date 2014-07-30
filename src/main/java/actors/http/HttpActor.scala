@@ -8,8 +8,6 @@ import HttpMethods._
 import MediaTypes._
 import requests._
 import actors.behaviors.BaseActor
-import spray.http.HttpRequest
-import spray.http.HttpResponse
 import requests.SetProfileAccessor
 import requests.ErrorResponse
 
@@ -33,6 +31,7 @@ class HttpActor extends BaseActor {
 
     case HttpRequest(GET, Uri.Path(path), _, _, _) =>
       val s = sender()
+
       val req = Read(path.stripPrefix("/"), "Context2")
 
       //onResponseOf(req ,profileAccessor,self,  {

@@ -13,9 +13,6 @@ import actors.http.HttpActor
 import spray.can.Http
 import akka.io.IO
 
-// import akka.util.Timeout
-import scala.concurrent.duration._
-
 
 object BPDS extends App {
 
@@ -57,7 +54,11 @@ object BPDS extends App {
   _contextGroupAccessor ! Write("Key2", "Value2", "Context1")
 
   _contextGroupAccessor ! Write("Key1", "Value1", "Context2")
-  _contextGroupAccessor ! Write("Key2", "Value2", "Context2")
+  var string = "a"
+  for(i <- 1 to 12)
+    string = string + string
+
+  _contextGroupAccessor ! Write("Key2", string, "Context2")
 
   _contextGroupAccessor ! Read("Key2", "Context2")
 
@@ -70,7 +71,6 @@ object BPDS extends App {
 
   _httpActor ! SetProfileAccessor(_contextGroupAccessor)
 
-
-
-  // _contextGroupOwner ! Shutdown()
+  // @todo: This is important because it persists the index. Maybe the index should be flushed automatically...
+  //_contextGroupOwner ! Shutdown()
 }

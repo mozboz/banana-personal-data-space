@@ -275,9 +275,8 @@ abstract class BaseActor extends Actor
    */
   def readConfig(key:String, value:Any => Unit, error:Exception => Unit) {
     config.withResource(
-      (actor) => aggregateSome(ReadConfig(key), List(actor), (response,sender,done) => {
+      (actor) => aggregateOne(ReadConfig(key), actor, (response,sender,done) => {
         value(response.asInstanceOf[ReadConfigResponse].value)
-        done()
       }),
       (exception) => throw exception)
   }
@@ -291,9 +290,8 @@ abstract class BaseActor extends Actor
    */
   def writeConfig(key:String, value:Any, success:() => Unit, error:Exception => Unit) {
     config.withResource(
-      (actor) => aggregateSome(WriteConfig(key, value), List(actor), (response,sender,done) => {
+      (actor) => aggregateOne(WriteConfig(key, value), actor, (response,sender,done) => {
         success()
-        done()
       }),
       (exception) => throw exception)
   }

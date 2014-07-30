@@ -149,6 +149,9 @@ class FilesystemContextActor extends BaseActor {
   private def readFromDataFile (key:String, withData:(String) => Unit, error:(Exception) => Unit) {
     val range = _contextIndex.getRangeBytes(key)
 
+    //withData("Bla")
+    //return
+
     withBuffer(range._1, range._2,
       (buffer) => {
         val paddedData = new Array[Byte](range._2)
