@@ -12,7 +12,7 @@ import scala.collection.mutable
  * Is responsible to spawn and stop context actors on request.
  */
 class ContextGroupOwnerActor extends BaseActor
-                             with MessageHandler { // @todo: add "with SystemEvents"
+                             with MessageHandler {
 
   val _managedContexts = new mutable.HashSet[String]
   val _runningContexts = new mutable.HashMap[String,ActorRef]

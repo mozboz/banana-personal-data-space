@@ -1,12 +1,18 @@
 package actors.supervisors
 
-import actors.behaviors.Requester
-import akka.actor.Actor
-import akka.event.LoggingReceive
+import actors.behaviors.BaseActor
+import akka.actor.ActorRef
+import requests.{Startup,Shutdown}
 
-class ContextMetadataManager extends Actor with Requester { // @todo: add "with SystemEvents"s
+class ContextMetadataManager extends BaseActor {
 
-  def receive = LoggingReceive(handleResponse orElse {
+  def handleRequest = {
     case _ =>
-  })
+  }
+
+  def doStartup(sender:ActorRef, message:Startup) {
+  }
+
+  def doShutdown(sender:ActorRef, message:Shutdown) {
+  }
 }

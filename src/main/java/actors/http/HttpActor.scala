@@ -1,41 +1,47 @@
 package actors.http
 
-import scala.concurrent.duration._
-import akka.pattern.ask
 import akka.util.Timeout
 import akka.actor._
 import spray.can.Http
-import spray.can.server.Stats
-import spray.util._
 import spray.http._
 import HttpMethods._
 import MediaTypes._
 import requests._
-import actors.behaviors.Requester
-import akka.event.LoggingReceive
+import actors.behaviors.BaseActor
 import spray.http.HttpRequest
 import spray.http.HttpResponse
 import requests.SetProfileAccessor
-import requests.SpawnContextResponse
-import spray.http.Timedout
 import requests.ErrorResponse
 
-class HttpActor extends Actor with ActorLogging with Requester {
+class HttpActor extends BaseActor {
+
   implicit val timeout: Timeout = 1 // for the actor 'asks'
   import context.dispatcher // ExecutionContext for the futures and scheduler
   var profileAccessor: ActorRef = _
 
-  def receive =  LoggingReceive(handleResponse orElse {
+  def doStartup(sender:ActorRef, message:Startup) {
+
+  }
+
+  def doShutdown(sender:ActorRef, message:Shutdown) {
+
+  }
+
+  def handleRequest =  {
     // when a new connection comes in we register ourselves as the connection handler
     case _: Http.Connected => sender ! Http.Register(self)
 
     case HttpRequest(GET, Uri.Path(path), _, _, _) =>
       val s = sender()
       val req = Read(path.stripPrefix("/"), "Context2")
-      onResponseOf(req ,profileAccessor,self,  {
+
+      //onResponseOf(req ,profileAccessor,self,  {
+
+      aggregateOne(req, profileAccessor, (response, sender, done) => {
+        response match {
         case x:ReadResponse => s ! HttpResponse(entity = HttpEntity(`text/html`, x.data))
         case x:ErrorResponse => s ! ErrorResponse(req, x.ex)
-      })
+      }})
 
     case SetProfileAccessor(profileActor) => {
       profileAccessor = profileActor
@@ -65,8 +71,7 @@ class HttpActor extends Actor with ActorLogging with Requester {
         entity = "The " + method + " request to '" + uri + "' has timed out..."
       )
         */
-
-  })
+  }
 
   ////////////// helpers //////////////
 
