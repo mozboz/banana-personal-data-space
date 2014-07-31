@@ -26,6 +26,7 @@ abstract class BaseActor extends Actor
    * @return
    */
   def receive = LoggingReceive(
+    handleConfigurable orElse
     handleSystemEvents orElse
     handleResponse orElse
     handleRequest
@@ -48,8 +49,6 @@ abstract class BaseActor extends Actor
     def isDefinedAt(x: Any) = x match {
       case x: Startup => true
       case x: Shutdown => true
-      case x: AddConfigurable => true
-      case x: RemoveConfigurable => true
       case _ => false
     }
 
@@ -63,8 +62,6 @@ abstract class BaseActor extends Actor
     def apply(x: Any) = x match {
       case x: Startup => handleStartupInternal(sender(), x)
       case x: Shutdown => handleShutdownInternal(sender(), x)
-      case x: AddConfigurable => handleAddConfigurable(sender(), x)
-      case x: RemoveConfigurable => handleRemoveConfigurable(sender(), x)
       case _ => throw new Exception("This function can not be applied to a value of " + x.getClass)
     }
   }

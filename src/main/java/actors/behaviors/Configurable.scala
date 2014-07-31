@@ -16,6 +16,18 @@ trait Configurable extends Actor with Aggregator {
 
   private val _configurableActors = new mutable.HashSet[ActorRef]
 
+  def handleConfigurable: Receive = new Receive {
+    def isDefinedAt(x: Any) = x match {
+      case x:AddConfigurable => true
+      case x:RemoveConfigurable => true
+      case _ => false
+    }
+    def apply(x: Any) = x match {
+      case x:AddConfigurable => handleAddConfigurable(sender(), x)
+      case x:RemoveConfigurable => handleRemoveConfigurable(sender(), x)
+      case _ => throw new Exception("This function is not applicable to objects of type: " + x.getClass)
+    }
+  }
 
   def handleAddConfigurable(sender:ActorRef, message:AddConfigurable) {
     try {
