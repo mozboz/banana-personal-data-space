@@ -4,7 +4,10 @@ import akka.actor.{Actor, ActorRef}
 
 import scala.collection.mutable
 
-trait Aggregator extends Actor with Requester{
+/**
+ * Provides functions to aggregate responses from more than one actor.
+ */
+trait Aggregator extends Actor with Requester {
 
   def notifyOne(request:Request,
                 one:ActorRef,
@@ -85,16 +88,17 @@ trait Aggregator extends Actor with Requester{
                     aggregator:(Response, ActorRef, () => Unit) => Unit,
                     then:() => Unit = () => {},
                     error:() => Unit = () => {}) {
-    val remaining = new mutable.HashSet[ActorRef]
-    some.foreach(a => remaining.add(a))
 
-    if (remaining.size == 0) {
+    val remainingActors = new mutable.HashSet[ActorRef]
+    some.foreach(a => remainingActors.add(a))
+
+    if (remainingActors.size == 0) {
       then.apply()
     } else {
       var cancelled = false
 
       expectResponse(request, (response, sender, completed) => {
-        remaining.remove(sender)
+        remainingActors.remove(sender)
 
         // Wrap the completed call into a function which sets a cancelled-flag
         val finishedAggregation = () => {
@@ -104,7 +108,7 @@ trait Aggregator extends Actor with Requester{
 
         aggregator(response, sender, finishedAggregation)
 
-        if (remaining.size == 0 || cancelled) {  // @todo: add timeout
+        if (remainingActors.size == 0 || cancelled) {  // @todo: add timeout
           if (!cancelled) // already called when cancelled
             completed()
 
@@ -112,8 +116,8 @@ trait Aggregator extends Actor with Requester{
         }
       })
 
-      for(childActor <- remaining) {
-        childActor ! request
+      for(remainingActor <- remainingActors) {
+        remainingActor ! request
       }
     }
   }

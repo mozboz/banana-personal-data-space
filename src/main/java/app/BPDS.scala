@@ -56,11 +56,11 @@ object BPDS extends App {
   // @todo: Check implications for error-handling, this seems not to be right... Maybe another solution must be used.
   // -> which could be traits which encapsulate
   //    child actor creation etc..
-  s0 ! AddChildren(List(s1,s2,s3))
+  s0 ! AddConfigurable(List(s1,s2,s3))
 
-  s1 ! AddChildren(List(w1,w2,w3))
-  s2 ! AddChildren(List(w4,w5,w6))
-  s3 ! AddChildren(List(w7,w8,w9))
+  s1 ! AddConfigurable(List(w1,w2,w3))
+  s2 ! AddConfigurable(List(w4,w5,w6))
+  s3 ! AddConfigurable(List(w7,w8,w9))
 
   s0 ! Startup(_configurationActor) // Sends Startup recursively to all actors. Returns only when all actors are started.
   s0 ! Shutdown() // Sends Shutdown recursively to all actors. Returns only when all actors are shut down.
