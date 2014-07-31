@@ -1,8 +1,9 @@
 package app
 
 
-import actors.supervisors.{ConfigurationActor, ContextGroupAccessorActor, ContextGroupOwnerActor, ProfileActor}
-import akka.actor.{ActorRef, Props, ActorSystem}
+import actors.supervisors._
+import actors.workers.TestWorker
+import akka.actor.{Props, ActorSystem}
 import com.typesafe.config.{Config, ConfigFactory}
 import events.{ConnectContextGroupOwner, ConnectProfile}
 import requests._
@@ -29,11 +30,43 @@ object BPDS extends App {
 
   implicit val system = ActorSystem("ProfileSystem", config)
 
-
-  // @todo: Create a model of the actors and their possible connections (in terms of exchanging messages)
-  //        so that messages can be broadcasted more easily. For instance Startup and Shutdown
-
   val _configurationActor = system.actorOf(Props[ConfigurationActor], "ConfigurationActor")
+
+  val s0 = system.actorOf(Props[TestSupervisor], "s0")
+
+  val s1 = system.actorOf(Props[TestSupervisor], "s1")
+  val s2 = system.actorOf(Props[TestSupervisor], "s2")
+  val s3 = system.actorOf(Props[TestSupervisor], "s3")
+
+  val w1 = system.actorOf(Props[TestWorker], "w1")
+  val w2 = system.actorOf(Props[TestWorker], "w2")
+  val w3 = system.actorOf(Props[TestWorker], "w3")
+
+  val w4 = system.actorOf(Props[TestWorker], "w4")
+  val w5 = system.actorOf(Props[TestWorker], "w5")
+  val w6 = system.actorOf(Props[TestWorker], "w6")
+
+  val w7 = system.actorOf(Props[TestWorker], "w7")
+  val w8 = system.actorOf(Props[TestWorker], "w8")
+  val w9 = system.actorOf(Props[TestWorker], "w9")
+
+  // This builds a logical actor-tree in contrast
+  // to the implicit supervision hierarchy which
+  // is only concerned about the creation tree.
+  // @todo: Check implications for error-handling, this seems not to be right... Maybe another solution must be used.
+  // -> which could be traits which encapsulate
+  //    child actor creation etc..
+  s0 ! AddChildren(List(s1,s2,s3))
+
+  s1 ! AddChildren(List(w1,w2,w3))
+  s2 ! AddChildren(List(w4,w5,w6))
+  s3 ! AddChildren(List(w7,w8,w9))
+
+  s0 ! Startup(_configurationActor) // Sends Startup recursively to all actors. Returns only when all actors are started.
+  s0 ! Shutdown() // Sends Shutdown recursively to all actors. Returns only when all actors are shut down.
+
+
+
   val _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
 
   val _httpActor = system.actorOf(Props[HttpActor], "HttpActor")

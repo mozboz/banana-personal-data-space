@@ -15,9 +15,9 @@ trait Buffer[TKey,TResource] extends Resource[TResource] {
    * Represents a request to a resource which is managed by a buffer.
    * Contains a success and error parameter.
    */
-  type ResouceRequest = ((TResource) => Unit, (Exception) => Unit)
+  type ResourceRequest = ((TResource) => Unit, (Exception) => Unit)
 
-  private val _resourceRequests = new mutable.Queue[ResouceRequest]
+  private val _resourceRequests = new mutable.Queue[ResourceRequest]
   private val _resource = new ValueContainer[TResource]
 
   private val _available = new ValueContainer[Boolean](Some(false))
