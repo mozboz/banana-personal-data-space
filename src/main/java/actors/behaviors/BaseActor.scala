@@ -12,7 +12,8 @@ import scala.collection.mutable
  * Provides convenient access to the configuration system and handles the startup and shutdown procedure.
  */
 abstract class BaseActor extends Actor
-                         with Requester {
+                         with Requester
+                         with Aggregator{
 
   private val _actorId = UUID.randomUUID()
   def actorId = _actorId
@@ -33,9 +34,6 @@ abstract class BaseActor extends Actor
    * Replaces the default actor receive function.
    */
   def handleRequest: Receive
-
-  private val _config = new BufferedResource[String, ActorRef]("Config")
-  def config = _config
 
   private val _children = new mutable.HashSet[ActorRef]
 
@@ -110,44 +108,6 @@ abstract class BaseActor extends Actor
     notifySome(request, _children, then, error)
   }
 
-  def notifyOne(request:Request,
-                one:ActorRef,
-                then: () => Unit,
-                error:() => Unit) {
-    notifySome(request, List(one), then, error)
-  }
-
-  /**
-   * Sends the specified request to some actors and waits until all responded.
-   * @param request The request
-   * @param then The continuation which should be called when all responses arrived
-   * @param error Timeout or other error continuation
-   */
-  def notifySome (request:Request,
-                  some:Iterable[ActorRef],
-                  then:() => Unit,
-                  error:() => Unit) {
-    val remaining = new mutable.HashSet[ActorRef]
-    some.foreach(a => remaining.add(a))
-
-    if (remaining.size == 0) {
-      then()
-    } else {
-      expectResponse(request, (response, sender, completed) => {
-        remaining.remove(sender)
-
-        if (remaining.size == 0) { // @todo: add timeout
-          completed()
-          then()
-        }
-      })
-
-      for(childActor <- remaining) {
-        childActor ! request
-      }
-    }
-  }
-
   /**
    * Sends the specified request to all children and aggregates every response that arrives.
    * @param request The request
@@ -163,87 +123,13 @@ abstract class BaseActor extends Actor
   }
 
   /**
-   * Sends the specified request to the recipient and catch the arriving response
-   * @param request The request
-   * @param aggregator The aggregator which gets the response and a "completed" function as parameters
-   * @param then The continuation that should be executed when the aggregation finished
-   * @param error The error continuation
-   */
-  def aggregateOne(request:Request,
-                    one:ActorRef,
-                    aggregator:(Response, ActorRef, () => Unit) => Unit,
-                    then:() => Unit = () => {},
-                    error:() => Unit = () => {}) {
-
-    // Wraps the aggregator in a way that 'done' is called implicitly if not done from
-    // within the handler
-    val aggregatorWrapper = (response:Response, actor:ActorRef, done:() => Unit) => {
-      var alreadyDone = false
-      val doneWrapper = () => {
-        if (!alreadyDone) {
-          done()
-          alreadyDone = true
-        }
-      }
-      aggregator(response, actor, doneWrapper)
-      doneWrapper()
-    }
-    aggregateSome(request, List(one), aggregatorWrapper, then, error)
-  }
-
-  /**
-   * Sends the specified request to some actors and aggregates every response that arrives.
-   * @param request The request
-   * @param aggregator The aggregator which gets the response and a "completed" function as parameters
-   * @param then The continuation that should be executed when the aggregation finished
-   * @param error The error continuation
-   */
-  def aggregateSome(request:Request,
-                    some:Iterable[ActorRef],
-                    aggregator:(Response, ActorRef, () => Unit) => Unit,
-                    then:() => Unit = () => {},
-                    error:() => Unit = () => {}) {
-    val remaining = new mutable.HashSet[ActorRef]
-    some.foreach(a => remaining.add(a))
-
-    if (remaining.size == 0) {
-      then.apply()
-    } else {
-      var cancelled = false
-
-      expectResponse(request, (response, sender, completed) => {
-        remaining.remove(sender)
-
-        // Wrap the completed call into a function which sets a cancelled-flag
-        val finishedAggregation = () => {
-          completed()
-          cancelled = true
-        }
-
-        aggregator(response, sender, finishedAggregation)
-
-        if (remaining.size == 0 || cancelled) {  // @todo: add timeout
-          if (!cancelled) // already called when cancelled
-            completed()
-
-          then.apply()
-        }
-      })
-
-      for(childActor <- remaining) {
-        childActor ! request
-      }
-    }
-  }
-
-  /**
    * Processes doStartup, then notify all children.
    * When all children responded with StartupResponse, then
    * send a StartupResponse to the parent.
    */
   private def handleStartupInternal(sender:ActorRef, message:Startup) {
-    config.reset(None)
-    config.set((a,loaded,c) => loaded(message.configRef))
+    /*config.reset(None)
+    config.set((a,loaded,c) => loaded(message.configRef))*/
 
     doStartup(sender, message)
 
@@ -265,34 +151,5 @@ abstract class BaseActor extends Actor
       () => sender ! ShutdownResponse(message),
       () => throw new Exception("Error while shutting down the children")
     )
-  }
-
-  /**
-   * Tries to get a value from the config.
-   * @param key The config key
-   * @param value The value-continuation
-   * @param error The error-continuation
-   */
-  def readConfig(key:String, value:Any => Unit, error:Exception => Unit) {
-    config.withResource(
-      (actor) => aggregateOne(ReadConfig(key), actor, (response,sender,done) => {
-        value(response.asInstanceOf[ReadConfigResponse].value)
-      }),
-      (exception) => throw exception)
-  }
-
-  /**
-   * Tries to write a value to the config.
-   * @param key The config key
-   * @param value The value to write
-   * @param success The success-continuation
-   * @param error The error-continuation
-   */
-  def writeConfig(key:String, value:Any, success:() => Unit, error:Exception => Unit) {
-    config.withResource(
-      (actor) => aggregateOne(WriteConfig(key, value), actor, (response,sender,done) => {
-        success()
-      }),
-      (exception) => throw exception)
   }
 }
