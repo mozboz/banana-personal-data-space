@@ -14,7 +14,7 @@ import scala.collection.mutable
 abstract class BaseActor extends Actor
                          with Requester
                          with Aggregator
-                         with Configurable {
+                         with Supervisor {
 
   private val _actorId = UUID.randomUUID()
   def actorId = _actorId
@@ -26,7 +26,7 @@ abstract class BaseActor extends Actor
    * @return
    */
   def receive = LoggingReceive(
-    handleConfigurable orElse
+    handleSupervisorMessages orElse
     handleSystemEvents orElse
     handleResponse orElse
     handleRequest
@@ -47,8 +47,6 @@ abstract class BaseActor extends Actor
    */
   def handleSystemEvents: Receive = new Receive {
     def isDefinedAt(x: Any) = x match {
-      case x: Startup => true
-      case x: Shutdown => true
       case _ => false
     }
 
@@ -60,8 +58,6 @@ abstract class BaseActor extends Actor
      * 4. RemoveChildren
      */
     def apply(x: Any) = x match {
-      case x: Startup => handleStartupInternal(sender(), x)
-      case x: Shutdown => handleShutdownInternal(sender(), x)
       case _ => throw new Exception("This function can not be applied to a value of " + x.getClass)
     }
   }

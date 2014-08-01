@@ -1,8 +1,8 @@
 package app
 
 
+import actors.behaviors.Response
 import actors.supervisors._
-import actors.workers.TestWorker
 import akka.actor.{Props, ActorSystem}
 import com.typesafe.config.{Config, ConfigFactory}
 import events.{ConnectContextGroupOwner, ConnectProfile}
@@ -29,59 +29,32 @@ object BPDS extends App {
        }""").withFallback(ConfigFactory.load())
 
   implicit val system = ActorSystem("ProfileSystem", config)
+  implicit val timeout = Timeout(1000)
 
   val _configurationActor = system.actorOf(Props[ConfigurationActor], "ConfigurationActor")
-
-  val s0 = system.actorOf(Props[TestSupervisor], "s0")
-
-  val s1 = system.actorOf(Props[TestSupervisor], "s1")
-  val s2 = system.actorOf(Props[TestSupervisor], "s2")
-  val s3 = system.actorOf(Props[TestSupervisor], "s3")
-
-  val w1 = system.actorOf(Props[TestWorker], "w1")
-  val w2 = system.actorOf(Props[TestWorker], "w2")
-  val w3 = system.actorOf(Props[TestWorker], "w3")
-
-  val w4 = system.actorOf(Props[TestWorker], "w4")
-  val w5 = system.actorOf(Props[TestWorker], "w5")
-  val w6 = system.actorOf(Props[TestWorker], "w6")
-
-  val w7 = system.actorOf(Props[TestWorker], "w7")
-  val w8 = system.actorOf(Props[TestWorker], "w8")
-  val w9 = system.actorOf(Props[TestWorker], "w9")
-
-  // This builds a logical actor-tree in contrast
-  // to the implicit supervision hierarchy which
-  // is only concerned about the creation tree.
-  // @todo: Check implications for error-handling, this seems not to be right... Maybe another solution must be used.
-  // -> which could be traits which encapsulate
-  //    child actor creation etc..
-  s0 ! AddConfigurable(List(s1,s2,s3))
-
-  s1 ! AddConfigurable(List(w1,w2,w3))
-  s2 ! AddConfigurable(List(w4,w5,w6))
-  s3 ! AddConfigurable(List(w7,w8,w9))
-
-  s0 ! Startup(_configurationActor) // Sends Startup recursively to all actors. Returns only when all actors are started.
-  s0 ! Shutdown() // Sends Shutdown recursively to all actors. Returns only when all actors are shut down.
-
-
-
   val _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
+
+  // Just for testing:
+  // Spawn and immediately stop an actor
+  val resp = _profileActor ? Spawn[TestSupervisor]()
+  Await.result(resp, timeout.duration).asInstanceOf[Response] match {
+    case x:SpawnResponse => _profileActor ! Stop(x.actorRef)
+    case x:ErrorResponse => throw x.ex
+  }
 
   val _httpActor = system.actorOf(Props[HttpActor], "HttpActor")
 
-  _profileActor ! Startup(_configurationActor)
+  _profileActor ! Start(_configurationActor)
 
   val _contextGroupOwner = system.actorOf(Props[ContextGroupOwnerActor], "ContextGroupOwner")
   _contextGroupOwner ! ConnectProfile(_profileActor)
-  _contextGroupOwner ! Startup(_configurationActor)
+  _contextGroupOwner ! Start(_configurationActor)
 
   val _contextGroupAccessor = system.actorOf(Props[ContextGroupAccessorActor], "ContextGroupAccessor")
   _contextGroupOwner ! ManageContexts(List("Context1", "Context2", "Context3"))
 
   _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
-  _contextGroupAccessor ! Startup(_configurationActor)
+  _contextGroupAccessor ! Start(_configurationActor)
 
   _contextGroupAccessor ! Write("Key1", "Value1", "Context1")
   _contextGroupAccessor ! Write("Key2", "Value2", "Context1")
@@ -95,7 +68,6 @@ object BPDS extends App {
 
   _contextGroupAccessor ! Read("Key2", "Context2")
 
-  implicit val timeout = Timeout(1000)
   val future =  _contextGroupAccessor ? Read("Key2", "Context2")
   val result = Await.result(future, timeout.duration).asInstanceOf[ReadResponse]
 

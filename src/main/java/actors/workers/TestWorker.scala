@@ -2,11 +2,11 @@ package actors.workers
 
 import actors.behaviors.BaseActor
 import akka.actor.ActorRef
-import requests.{Startup,Shutdown}
+import requests.{Start,Stop}
 
 class TestWorker extends BaseActor {
 
-  def doStartup(sender:ActorRef, message:Startup) {
+  def doStartup(sender:ActorRef, message:Start) {
     println("doStartup " + actorId)
   }
 
@@ -14,7 +14,7 @@ class TestWorker extends BaseActor {
     case _ =>
   }
 
-  def doShutdown(sender:ActorRef, message:Shutdown) {
+  def doShutdown(sender:ActorRef, message:Stop) {
     println("doShutdown " + actorId)
   }
 }

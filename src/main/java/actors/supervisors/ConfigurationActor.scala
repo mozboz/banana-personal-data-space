@@ -2,7 +2,7 @@ package actors.supervisors
 
 import actors.behaviors.BaseActor
 import akka.actor.ActorRef
-import requests.{WriteConfig, Startup, ReadConfig, Shutdown}
+import requests.{WriteConfig, Start, ReadConfig, Stop}
 import requests.config.{GetContextDataFilePathResponse, GetContextDataFilePath}
 
 class ConfigurationActor extends BaseActor {
@@ -16,10 +16,10 @@ class ConfigurationActor extends BaseActor {
       case x:WriteConfig => handleWriteConfig(sender(), x)
   }
 
-  def doStartup(sender:ActorRef, message:Startup) {
+  def doStartup(sender:ActorRef, message:Start) {
   }
 
-  def doShutdown(sender:ActorRef, message:Shutdown) {
+  def doShutdown(sender:ActorRef, message:Stop) {
   }
 
   private def handleReadConfig(sender:ActorRef, message:ReadConfig) {

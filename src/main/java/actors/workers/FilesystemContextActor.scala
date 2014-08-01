@@ -29,7 +29,7 @@ class FilesystemContextActor extends BaseActor {
     case x:WriteToContext => handleWriteToContext(sender(), x)
   }
 
-  def doStartup(sender:ActorRef, message:Startup) {
+  def doStartup(sender:ActorRef, message:Start) {
     // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
     onResponseOf(GetContextDataFilePath(context.self.path.name), message.configRef, self, {
       case x:GetContextDataFilePathResponse =>
@@ -41,9 +41,9 @@ class FilesystemContextActor extends BaseActor {
     })
   }
 
-  def doShutdown(sender:ActorRef, message:Shutdown) {
+  def doShutdown(sender:ActorRef, message:Stop) {
     self ! DisconnectFile()
-    sender ! ShutdownResponse
+    sender ! StopResponse
   }
 
   private def handleConnectFile(sender:ActorRef, message:ConnectFile) {

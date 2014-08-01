@@ -2,17 +2,25 @@ package actors.supervisors
 
 import actors.behaviors._
 import akka.actor.{ActorRef, Actor}
-import requests.{Shutdown, ContextExistsResponse, ContextExists}
+import requests.{Start, Stop, ContextExistsResponse, ContextExists}
 
 
-class ProfileActor extends Actor with Requester { // @todo: add "with SystemEvents"
+class ProfileActor extends Actor with Supervisor {
 
   def receive = handleResponse orElse {
-    case x:Shutdown => handleShutdown(sender(), x)
+    case x:Stop => handleShutdown(sender(), x)
     case x:ContextExists => handleContextExists(sender(), x)
   }
 
-  private def handleShutdown(sender:ActorRef, message:Shutdown) {
+  def doStartup(sender:ActorRef, message:Start){
+
+  }
+
+  def doShutdown(sender:ActorRef, message:Stop) {
+
+  }
+
+  private def handleShutdown(sender:ActorRef, message:Stop) {
     // @todo: implement!
   }
 

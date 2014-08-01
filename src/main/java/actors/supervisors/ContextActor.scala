@@ -47,7 +47,7 @@ class ContextActor extends BaseActor with Proxy  {
     case x: AddReferenceTo => handleAddReferenceTo(sender(), x)
   }
 
-  def doStartup(sender:ActorRef, message:Startup) {
+  def doStartup(sender:ActorRef, message:Start) {
     // @todo: Implement setup logic
     // @todo: Which URI does this context have?
     _contextBackend.withResource(
@@ -59,7 +59,7 @@ class ContextActor extends BaseActor with Proxy  {
     )
   }
 
-  def doShutdown(sender:ActorRef, message:Shutdown) {
+  def doShutdown(sender:ActorRef, message:Stop) {
     _contextBackend.withResource(
       (actor) => {
         actor ! message // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child

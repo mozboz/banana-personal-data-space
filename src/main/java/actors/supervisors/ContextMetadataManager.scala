@@ -2,7 +2,7 @@ package actors.supervisors
 
 import actors.behaviors.BaseActor
 import akka.actor.ActorRef
-import requests.{Startup,Shutdown}
+import requests.{Start,Stop}
 
 class ContextMetadataManager extends BaseActor {
 
@@ -10,9 +10,9 @@ class ContextMetadataManager extends BaseActor {
     case _ =>
   }
 
-  def doStartup(sender:ActorRef, message:Startup) {
+  def doStartup(sender:ActorRef, message:Start) {
   }
 
-  def doShutdown(sender:ActorRef, message:Shutdown) {
+  def doShutdown(sender:ActorRef, message:Stop) {
   }
 }

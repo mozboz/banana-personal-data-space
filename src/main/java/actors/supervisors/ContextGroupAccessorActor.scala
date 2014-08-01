@@ -54,11 +54,11 @@ class ContextGroupAccessorActor extends BaseActor {
     case x: Write => handleWrite(sender(), x)
   }
 
-  def doStartup(sender: ActorRef, message: Startup) {
+  def doStartup(sender: ActorRef, message: Start) {
 
   }
 
-  def doShutdown(sender:ActorRef, message:Shutdown) {
+  def doShutdown(sender:ActorRef, message:Stop) {
     _contextResourceManager.keys().foreach(
       (key) => _contextResourceManager
         .get(key)
