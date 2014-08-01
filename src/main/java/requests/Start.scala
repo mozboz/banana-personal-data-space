@@ -10,4 +10,4 @@ import akka.actor.ActorRef
  * @param configRef A reference to the configuration actor
  */
 case class Start(configRef:ActorRef) extends Request
-case class StartupResponse(request:Request) extends Response(request.messageId) // @todo: Change this back to messageId only to prevent sending the whole request with every answer
+case class StartResponse(request:Request) extends Response(request.messageId) // @todo: Change this back to messageId only to prevent sending the whole request with every answer

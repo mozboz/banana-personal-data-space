@@ -17,11 +17,11 @@ class HttpActor extends WorkerActor {
   import context.dispatcher // ExecutionContext for the futures and scheduler
   var profileAccessor: ActorRef = _
 
-  def start(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start, started:() => Unit) {
 
   }
 
-  def stop(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
 
   }
 
@@ -36,7 +36,7 @@ class HttpActor extends WorkerActor {
 
       //onResponseOf(req ,profileAccessor,self,  {
 
-      aggregateOne(req, profileAccessor, (response, sender, done) => {
+      aggregateOne(req, profileAccessor, (response, sender) => {
         response match {
         case x:ReadResponse => s ! HttpResponse(entity = HttpEntity(`text/html`, x.data))
         case x:ErrorResponse => s ! ErrorResponse(req, x.ex)

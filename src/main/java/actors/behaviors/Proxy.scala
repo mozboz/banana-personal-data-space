@@ -11,7 +11,7 @@ trait Proxy extends WorkerActor{
    */
   def proxy(request:Request, to:ActorRef, sender:ActorRef) {
     val original = sender
-    aggregateOne(request, to, (response, sender, done) => {
+    aggregateOne(request, to, (response, sender) => {
       original ! response
     })
   }

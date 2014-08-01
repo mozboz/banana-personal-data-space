@@ -49,17 +49,12 @@ class ContextGroupAccessorActor extends WorkerActor {
     case x: Write => handle[Write](sender(), x, write)
   }
 
-  def start(sender: ActorRef, message: Start) {
-
+  def start(sender: ActorRef, message: Start, started:() => Unit) {
+    started() //@todo: Do actual startup
   }
 
-  def stop(sender:ActorRef, message:Stop) {
-    _contextResourceManager.keys().foreach(
-      (key) => _contextResourceManager
-        .get(key)
-        .withResource(
-          (res) => res ! message,
-          (ex) => throw ex))
+  def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
+    stopped() //@todo: Do the actual stopping
   }
 
   private def read(sender: ActorRef, message: Read) {
@@ -115,7 +110,7 @@ class ContextGroupAccessorActor extends WorkerActor {
       // @todo: Notify "someone" about the missing dependency (maybe throttled)
     }
 
-    aggregateOne(SpawnContext(contextKey), contextGroupOwner, (response, sender, done) => {
+    aggregateOne(SpawnContext(contextKey), contextGroupOwner, (response, sender) => {
       response match {
         case x: SpawnContextResponse => started(x.actorRef)
         case x: ErrorResponse => error(new Exception("Error while starting the context " + contextKey, x.ex))
@@ -130,7 +125,7 @@ class ContextGroupAccessorActor extends WorkerActor {
                               dataKey: String,
                               data: (String) => Unit,
                               error: (Exception) => Unit) {
-    aggregateOne(ReadFromContext(dataKey), actorRef, (response, sender, done) => {
+    aggregateOne(ReadFromContext(dataKey), actorRef, (response, sender) => {
       response match {
         case x: ReadResponse => data(x.data)
         case x: ErrorResponse => error(new Exception("Error while reading from context. Data key: " + dataKey, x.ex))
@@ -146,7 +141,7 @@ class ContextGroupAccessorActor extends WorkerActor {
                              data: () => String,
                              success: () => Unit,
                              error: (Exception) => Unit) {
-    aggregateOne(WriteToContext(dataKey, data()), actorRef, (response, sender, done) => {
+    aggregateOne(WriteToContext(dataKey, data()), actorRef, (response, sender) => {
       response match {
         case x: WriteResponse => success()
         case x: ErrorResponse => error(new Exception("Error while writing to context. Data key: " + dataKey, x.ex))

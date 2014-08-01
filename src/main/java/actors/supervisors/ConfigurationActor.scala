@@ -1,34 +1,26 @@
 package actors.supervisors
 
-import actors.behaviors.WorkerActor
-import akka.actor.ActorRef
-import requests.{WriteConfig, Start, ReadConfig, Stop}
-import requests.config.{GetContextDataFilePathResponse, GetContextDataFilePath}
+import actors.behaviors.RequestHandler
+import akka.actor.{Actor, ActorRef}
+import requests.{ReadConfigResponse, WriteConfig, ReadConfig}
 
-class ConfigurationActor extends WorkerActor {
+class ConfigurationActor extends Actor with RequestHandler {
 
-  private val _dataFolder = System.getProperty("home")
+  def receive = handleRequest
 
-  // @todo: make the configuration just another context
   def handleRequest = {
-      case x:GetContextDataFilePath => handleGetContextDataFilePath(sender(), x)
-      case x:ReadConfig => handleReadConfig(sender(), x)
-      case x:WriteConfig => handleWriteConfig(sender(), x)
-  }
-
-  def start(sender:ActorRef, message:Start) {
-  }
-
-  def stop(sender:ActorRef, message:Stop) {
+      case x:ReadConfig => handle[ReadConfig](sender(), x, handleReadConfig)
+      case x:WriteConfig => handle[WriteConfig](sender(), x, handleWriteConfig)
   }
 
   private def handleReadConfig(sender:ActorRef, message:ReadConfig) {
+    if (message.key == "dataFolder")
+      sender ! ReadConfigResponse(message, System.getProperty("home"))
+
+    throw new Exception("Unknown config key: " + message.key)
   }
 
   private def handleWriteConfig(sender:ActorRef, message:WriteConfig) {
-  }
-
-  private def handleGetContextDataFilePath(sender:ActorRef, message:GetContextDataFilePath) {
-    sender ! GetContextDataFilePathResponse(message, _dataFolder)
+    throw new Exception("Writing to the configuration is not yet implemented.")
   }
 }

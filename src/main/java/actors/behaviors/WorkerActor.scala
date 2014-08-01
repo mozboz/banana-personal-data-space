@@ -12,7 +12,7 @@ import scala.collection.mutable
  * Provides convenient access to the configuration system and handles the startup and shutdown procedure.
  */
 abstract class WorkerActor extends Actor
-                         with Configurable {
+                           with Configurable {
 
   private val _actorId = UUID.randomUUID()
   def actorId = _actorId
@@ -28,7 +28,4 @@ abstract class WorkerActor extends Actor
     handleResponse orElse
     handleRequest
   )
-
-  // @todo: Add dependency management and discovery ->
-  // @todo: Create a function which takes a list of Request objects and matches them against ever isDefinedAt to get a list of supported Requests.
 }

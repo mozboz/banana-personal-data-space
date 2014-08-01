@@ -25,11 +25,11 @@ class ContextGroupOwnerActor extends WorkerActor
     case x: ContextExists => handleContextExists(sender(), x)
   }
 
-  def start(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start, started:() => Unit) {
     _configActor = message.configRef
   }
 
-  def stop(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
     // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
     var toStop = _runningContexts.size
     _runningContexts.foreach((a) => {
@@ -59,7 +59,7 @@ class ContextGroupOwnerActor extends WorkerActor
     def handleSpawnedContext(context:ActorRef) {
       // @todo: Check how to do that using the initialization-hierarchy
       onResponseOf(Start(_configActor),  context, self, {
-        case x:StartupResponse => sender ! SpawnContextResponse(message, context)
+        case x:StartResponse => sender ! SpawnContextResponse(message, context)
         case x:ErrorResponse => sender ! ErrorResponse(message, x.ex)
       })
     }
@@ -146,7 +146,7 @@ class ContextGroupOwnerActor extends WorkerActor
       yes = (actorRef) => yes(Some(actorRef)),
       no = () => {
         _profileResource.withResource((profileActorRef) => {
-          aggregateOne(ContextExists(contextKey), profileActorRef, (response, sender, done) => {
+          aggregateOne(ContextExists(contextKey), profileActorRef, (response, sender) => {
             response match {
               case ContextExistsResponse(x, true) => yes(None)
               case ContextExistsResponse(x, false) => no()

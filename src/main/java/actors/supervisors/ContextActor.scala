@@ -44,7 +44,7 @@ class ContextActor extends WorkerActor with Proxy  {
     case x: AddReferenceTo => handle[AddReferenceTo](sender(), x, addReferenceTo)
   }
 
-  def start(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start, started:() => Unit) {
     // @todo: Implement setup logic
     // @todo: Which URI does this context have?
     /*_contextBackend.withResource(
@@ -56,7 +56,7 @@ class ContextActor extends WorkerActor with Proxy  {
     )*/
   }
 
-  def stop(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
     /*_contextBackend.withResource(
       (actor) => {
         actor ! message // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child

@@ -1,14 +1,11 @@
 package actors.workers
 
-import requests.config.{GetContextDataFilePathResponse, GetContextDataFilePath}
-
 import scala.util.control.Breaks._
-import java.io.RandomAccessFile
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
 import actors.behaviors._
-import actors.workers.models.{KeyMapFilesystemPersistence, KeyMapIndexEntry, KeyMapIndex}
+import actors.workers.models.{KeyMapIndexEntry, KeyMapIndex}
 import akka.actor.ActorRef
 import requests._
 import utils.BufferedResource
@@ -25,7 +22,7 @@ class FilesystemContextActor extends WorkerActor {
     case x:WriteToContext => handleWriteToContext(sender(), x)
   }
 
-  def start(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start, started:() => Unit) {
     /*
     // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
     onResponseOf(GetContextDataFilePath(context.self.path.name), message.configRef, self, {
@@ -38,7 +35,7 @@ class FilesystemContextActor extends WorkerActor {
     })*/
   }
 
-  def stop(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
     /*
     self ! DisconnectFile()
     sender ! StopResponse

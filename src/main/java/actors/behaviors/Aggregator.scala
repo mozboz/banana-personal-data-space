@@ -10,6 +10,21 @@ import scala.collection.mutable
  */
 trait Aggregator extends Actor with Requester{
 
+  /**
+   * Can be used to join different execution branches together.
+   * @param times How many paths to join
+   * @param joined The continuation which is called when all branches were joined
+   * @return The join counter
+   */
+  def join(times:Int, joined:() => Unit) : () => Unit = {
+    var remaining = times
+    () => {
+      remaining = remaining - 1
+      if (remaining == 0)
+        joined()
+    }
+  }
+
   def notifyOne(request:Request,
                 one:ActorRef,
                 then: () => Unit,
@@ -57,22 +72,13 @@ trait Aggregator extends Actor with Requester{
    */
   def aggregateOne(request:Request,
                    one:ActorRef,
-                   aggregator:(Response, ActorRef, () => Unit) => Unit,
+                   aggregator:(Response, ActorRef) => Unit,
                    then:() => Unit = () => {},
                    error:() => Unit = () => {}) {
 
-    // Wraps the aggregator in a way that 'done' is called implicitly if not done from
-    // within the handler
     val aggregatorWrapper = (response:Response, actor:ActorRef, done:() => Unit) => {
-      var alreadyDone = false
-      val doneWrapper = () => {
-        if (!alreadyDone) {
-          done()
-          alreadyDone = true
-        }
-      }
-      aggregator(response, actor, doneWrapper)
-      doneWrapper()
+      aggregator(response, actor)
+      done()
     }
     aggregateSome(request, List(one), aggregatorWrapper, then, error)
   }

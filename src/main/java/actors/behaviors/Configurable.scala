@@ -26,24 +26,24 @@ trait Configurable extends Actor with Aggregator
   }
 
   def handleStart(sender:ActorRef, message:Start) {
-    start(sender, message)
-    sender ! StartupResponse(message)
+    start(sender, message,
+      () => sender ! StartResponse(message))
   }
 
   def handleStop(sender:ActorRef, message:Stop) {
-    stop(sender, message)
-    sender ! StopResponse(message)
+    stop(sender, message,
+      () => sender ! StopResponse(message))
   }
 
   /**
    * When overridden, processes startup logic for the actor.
    */
-  def start(sender:ActorRef, message:Start)
+  def start(sender:ActorRef, message:Start, started:() => Unit)
 
   /**
    * When overridden, processes shutdown logic for the actor.
    */
-  def stop(sender:ActorRef, message:Stop)
+  def stop(sender:ActorRef, message:Stop, stopped:() => Unit)
 
   /**
    * Sets the ref to the config actor which should be consulted.
@@ -64,7 +64,7 @@ trait Configurable extends Actor with Aggregator
    */
   def readConfig(key:String, value:Any => Unit, error:Exception => Unit) {
     _configActor.withResource(
-      (actor) => aggregateOne(ReadConfig(key), actor, (response,sender,done) => {
+      (actor) => aggregateOne(ReadConfig(key), actor, (response,sender) => {
         value(response.asInstanceOf[ReadConfigResponse].value)
       }),
       (exception) => throw exception)
@@ -79,7 +79,7 @@ trait Configurable extends Actor with Aggregator
    */
   def writeConfig(key:String, value:Any, success:() => Unit, error:Exception => Unit) {
     _configActor.withResource(
-      (actor) => aggregateOne(WriteConfig(key, value), actor, (response,sender,done) => {
+      (actor) => aggregateOne(WriteConfig(key, value), actor, (response,sender) => {
         success()
       }),
       (exception) => throw exception)

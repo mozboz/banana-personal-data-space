@@ -12,7 +12,7 @@ trait Supervisor extends Actor with Aggregator
                                with RequestHandler
                                with Configurable {
 
-  private val _supervisedActors = new mutable.HashSet[ActorRef]
+  private val _supervisedActors = new mutable.HashMap[String,ActorRef]
 
   def handleSupervisorMessages: Receive =
     handleConfigurableMessages orElse
@@ -25,50 +25,48 @@ trait Supervisor extends Actor with Aggregator
     }
 
     def apply(x: Any) = x match {
-      case x: Spawn => handle[Spawn](sender(), x, handleSpawn)
-      case x: Kill => handle[Kill](sender(), x, handleKill)
+      case x: Spawn => handle[Spawn](sender(), x, spawn)
+      case x: Kill => handle[Kill](sender(), x, kill)
       case x: ListActors => handle[ListActors](sender(), x, handleListActors)
       case _ => throw new Exception("This function is not applicable to objects of type: " + x.getClass)
     }
   }
 
-  def handleSpawn(sender: ActorRef, message: Spawn) {
-    val actorRef = context.actorOf(message.props)
+  def spawn(sender: ActorRef, message: Spawn) {
+    val actorRef = context.actorOf(message.props, message.id)
+    _supervisedActors.put(message.id, actorRef)
+
     sender ! SpawnResponse(message, actorRef)
   }
 
-  def handleKill(sender: ActorRef, message: Kill) {
+  def kill(sender: ActorRef, message: Kill) {
+    val actor = _supervisedActors.get(message.id).get
+    context.stop(actor)
+    _supervisedActors.remove(message.id)
+
     sender ! KillResponse(message)
   }
 
   def handleListActors(sender: ActorRef, message: ListActors) {
+    sender ! ListActorsResponse(message, _supervisedActors)
   }
 
-
-  /**
-   * Processes doStartup, then notify all children.
-   * When all children responded with StartupResponse, then
-   * send a StartupResponse to the parent.
-   */
   override def handleStart(sender: ActorRef, message: Start) {
-    start(sender, message)
-
-    notifyAllChildren(message,
-      () => sender ! StartupResponse(message),
-      () => throw new Exception("Error while starting the children")
-    )
+    // First start self, then the children
+    start(sender, message,
+      () => {
+        notifyAllChildren(message,
+          () => sender ! StartResponse(message),
+          () => throw new Exception("Error while starting the children")
+        )
+      })
   }
 
-  /**
-   * Processes doShutdown, then notify all children.
-   * When all children responded with ShutdownResponse, then
-   * send a ShutdownResponse to the parent.
-   */
   override def handleStop(sender: ActorRef, message: Stop) {
-    stop(sender, message)
-
+    // First stop the children, then self
     notifyAllChildren(message,
-      () => sender ! StopResponse(message),
+      () => stop(sender, message,
+        () => sender ! StopResponse(message)),
       () => throw new Exception("Error while stopping the children")
     )
   }
@@ -82,7 +80,7 @@ trait Supervisor extends Actor with Aggregator
   def notifyAllChildren(request: Request,
                         then: () => Unit,
                         error: () => Unit) {
-    notifySome(request, _supervisedActors, then, error)
+    notifySome(request, _supervisedActors.values, then, error)
   }
 
   /**
@@ -96,6 +94,6 @@ trait Supervisor extends Actor with Aggregator
                            aggregator: (Response, ActorRef, () => Unit) => Unit,
                            then: () => Unit = () => {},
                            error: () => Unit = () => {}) {
-    aggregateSome(request, _supervisedActors, aggregator, then, error)
+    aggregateSome(request, _supervisedActors.values, aggregator, then, error)
   }
 }

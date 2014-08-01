@@ -10,9 +10,9 @@ class ContextMetadataManager extends WorkerActor {
     case _ =>
   }
 
-  def start(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start, started:() => Unit) {
   }
 
-  def stop(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
   }
 }

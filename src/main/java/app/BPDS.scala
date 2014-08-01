@@ -33,6 +33,14 @@ object BPDS extends App {
   val _configurationActor = system.actorOf(Props[ConfigurationActor], "ConfigurationActor")
   val _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
 
+  _profileActor ! Start(_configurationActor)
+  _profileActor ! Stop(_profileActor)
+
+
+  /*
+  val _configurationActor = system.actorOf(Props[ConfigurationActor], "ConfigurationActor")
+  val _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
+
   // Just for testing:
   // Spawn and immediately kill an actor
   val resp = _profileActor ? Spawn(Props[TestSupervisor])
@@ -77,4 +85,5 @@ object BPDS extends App {
 
   // @todo: This is important because it persists the index. Maybe the index should be flushed automatically...
   //_contextGroupOwner ! Shutdown()
+  */
 }
