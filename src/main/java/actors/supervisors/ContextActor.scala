@@ -3,7 +3,6 @@ package actors.supervisors
 import actors.behaviors._
 import actors.workers.FilesystemContextActor
 import akka.actor.{Props, ActorRef}
-import events.{DisconnectContextBackend, ConnectContextBackend}
 import requests._
 import utils.BufferedResource
 
@@ -34,33 +33,31 @@ class ContextActor extends BaseActor with Proxy  {
   private val _contextBackend = new BufferedResource[String,ActorRef]("ContextBackend")
 
   // @todo: only for testing
-  private val _fsBackendActor = context.actorOf(Props[FilesystemContextActor], context.self.path.name)
-  self ! ConnectContextBackend(_fsBackendActor)
+  /*private val _fsBackendActor = context.actorOf(Props[FilesystemContextActor], context.self.path.name)
+  self ! ConnectContextBackend(_fsBackendActor)*/
 
   def handleRequest = {
-    case x: ConnectContextBackend => handleConnectContextBackend(sender(), x)
-    case x: DisconnectContextBackend => handleDisconnectContextBackend(sender(), x)
-    case x: AggregateContext => handleAggregateContext(sender(), x)
-    case x: ReadFromContext => handleReadFromContext(sender(), x)
-    case x: WriteToContext => handleWriteToContext(sender(), x)
-    case x: AddReferencedBy => handleAddReferencedBy(sender(), x)
-    case x: AddReferenceTo => handleAddReferenceTo(sender(), x)
+    case x: AggregateContext => handle[AggregateContext](sender(), x, aggregateContext)
+    case x: ReadFromContext => handle[ReadFromContext](sender(), x, readFromContext)
+    case x: WriteToContext => handle[WriteToContext](sender(), x, writeToContext)
+    case x: AddReferencedBy => handle[AddReferencedBy](sender(), x, addReferencedBy)
+    case x: AddReferenceTo => handle[AddReferenceTo](sender(), x, addReferenceTo)
   }
 
-  def doStartup(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start) {
     // @todo: Implement setup logic
     // @todo: Which URI does this context have?
-    _contextBackend.withResource(
+    /*_contextBackend.withResource(
       (actor) => {
         actor ! message // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
         sender ! StartupResponse(message)
       },
       (ex) => sender ! ErrorResponse(message, ex)
-    )
+    )*/
   }
 
-  def doShutdown(sender:ActorRef, message:Stop) {
-    _contextBackend.withResource(
+  def stop(sender:ActorRef, message:Stop) {
+    /*_contextBackend.withResource(
       (actor) => {
         actor ! message // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
         aggregateSome(message, List(actor), (response,sender,done) => {
@@ -68,42 +65,34 @@ class ContextActor extends BaseActor with Proxy  {
           done()
         })
       },
-      (ex) => throw ex)
+      (ex) => throw ex)*/
   }
 
-  private def handleAddReferenceTo(sender:ActorRef, message:AddReferenceTo) {
+  private def addReferenceTo(sender:ActorRef, message:AddReferenceTo) {
     // @todo: implement the AddReferenceTo behavior
     _referencedContexts.put(message.uri, message.actor)
   }
 
-  private def handleAddReferencedBy(sender:ActorRef, message:AddReferencedBy) {
+  private def addReferencedBy(sender:ActorRef, message:AddReferencedBy) {
     // @todo: implement the AddReferencedBy behavior
     _referencedByContexts.put(message.uri, message.actor)
   }
 
-  private def handleAggregateContext(sender:ActorRef, message:AggregateContext) {
+  private def aggregateContext(sender:ActorRef, message:AggregateContext) {
     // @todo: implement the AggregateContext behavior
     _aggregatesContexts.put(message.uri, message.actor)
   }
 
-  private def handleConnectContextBackend(sender:ActorRef, message:ConnectContextBackend) {
-    _contextBackend.set((a, loaded, b) => loaded(message.actorRef))
-  }
-
-  private def handleDisconnectContextBackend(sender:ActorRef, message:DisconnectContextBackend) {
-    _contextBackend.reset(None)
-  }
-
-  private def handleReadFromContext(sender:ActorRef, message:ReadFromContext) {
+  private def readFromContext(sender:ActorRef, message:ReadFromContext) {
     withContextBackend(
       (backend) => proxy(message, backend, sender),
-      (exception) => sender ! ErrorResponse(message, exception))
+      (exception) => throw exception)
   }
 
-  private def handleWriteToContext(sender:ActorRef, message:WriteToContext) {
+  private def writeToContext(sender:ActorRef, message:WriteToContext) {
     withContextBackend(
       (backend) => proxy(message, backend, sender),
-      (exception) => sender ! ErrorResponse(message, exception))
+      (exception) => throw exception)
   }
 
   private def withContextBackend (withContextBackend : (ActorRef) => Unit,

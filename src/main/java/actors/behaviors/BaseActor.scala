@@ -13,6 +13,7 @@ import scala.collection.mutable
  */
 abstract class BaseActor extends Actor
                          with Requester
+                         with RequestHandler
                          with Aggregator
                          with Supervisor {
 
@@ -27,38 +28,10 @@ abstract class BaseActor extends Actor
    */
   def receive = LoggingReceive(
     handleSupervisorMessages orElse
-    handleSystemEvents orElse
     handleResponse orElse
     handleRequest
   )
 
-  /**
-   * Replaces the default actor receive function.
-   */
-  def handleRequest: Receive
-
-
-
   // @todo: Add dependency management and discovery ->
   // @todo: Create a function which takes a list of Request objects and matches them against ever isDefinedAt to get a list of supported Requests.
-
-  /**
-   * Partial function which handles the configuration system messages.
-   */
-  def handleSystemEvents: Receive = new Receive {
-    def isDefinedAt(x: Any) = x match {
-      case _ => false
-    }
-
-    /*
-     * Order for the requests should be as follows:
-     * 1. AddChildren
-     * 2. Startup (recursive)
-     * 3. Shutdown (recursive)
-     * 4. RemoveChildren
-     */
-    def apply(x: Any) = x match {
-      case _ => throw new Exception("This function can not be applied to a value of " + x.getClass)
-    }
-  }
 }

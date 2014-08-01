@@ -9,9 +9,7 @@ import java.nio.channels.FileChannel
 
 import actors.behaviors._
 import actors.workers.models.{KeyMapFilesystemPersistence, KeyMapIndexEntry, KeyMapIndex}
-import akka.actor.{ActorRef, Actor}
-import akka.event.LoggingReceive
-import events.{ConnectFile, DisconnectFile}
+import akka.actor.ActorRef
 import requests._
 import utils.BufferedResource
 
@@ -23,13 +21,12 @@ class FilesystemContextActor extends BaseActor {
   private var _dataFolder = ""
 
   def handleRequest = {
-    case x:ConnectFile => handleConnectFile(sender(), x)
-    case x:DisconnectFile => handleDisconnectFile(sender(), x)
     case x:ReadFromContext => handleReadFromContext(sender(), x)
     case x:WriteToContext => handleWriteToContext(sender(), x)
   }
 
-  def doStartup(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start) {
+    /*
     // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
     onResponseOf(GetContextDataFilePath(context.self.path.name), message.configRef, self, {
       case x:GetContextDataFilePathResponse =>
@@ -38,14 +35,17 @@ class FilesystemContextActor extends BaseActor {
         sender ! StartupResponse(message)
 
       case x:ErrorResponse => throw x.ex
-    })
+    })*/
   }
 
-  def doShutdown(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop) {
+    /*
     self ! DisconnectFile()
     sender ! StopResponse
+    */
   }
 
+  /*
   private def handleConnectFile(sender:ActorRef, message:ConnectFile) {
     _contextIndex = new KeyMapFilesystemPersistence().load(_dataFolder, context.self.path.name)
     _fileChannelResource.set((a,b,c) => b.apply(new RandomAccessFile(message.path, "rw").getChannel))
@@ -56,6 +56,7 @@ class FilesystemContextActor extends BaseActor {
     new KeyMapFilesystemPersistence().save(_contextIndex, _dataFolder)
     // @todo: There should be a way to notify the caller about the failure of the clean-up action (Request/Response?)
   }
+*/
 
   private def handleReadFromContext(sender:ActorRef, message:ReadFromContext) {
     readFromDataFile(message.key,

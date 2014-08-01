@@ -1,8 +1,7 @@
 package actors.supervisors
 
-import actors.behaviors.{BaseActor, MessageHandler}
+import actors.behaviors.{BaseActor, RequestHandler}
 import akka.actor.{Props, ActorRef}
-import events.{DisconnectProfile, ConnectProfile}
 import requests._
 import utils.BufferedResource
 
@@ -12,7 +11,7 @@ import scala.collection.mutable
  * Is responsible to spawn and stop context actors on request.
  */
 class ContextGroupOwnerActor extends BaseActor
-                             with MessageHandler {
+                             with RequestHandler {
 
   val _managedContexts = new mutable.HashSet[String]
   val _runningContexts = new mutable.HashMap[String,ActorRef]
@@ -20,19 +19,17 @@ class ContextGroupOwnerActor extends BaseActor
   var _configActor : ActorRef = null
 
   def handleRequest = {
-    case x: ConnectProfile =>  handleConnectProfile(sender(),x)
-    case x: DisconnectProfile => handleDisconnectProfile(sender(), x)
     case x: ManageContexts => handleManageContexts(sender(), x)
     case x: ReleaseContexts => handleReleaseContexts(sender(), x)
     case x: SpawnContext => handleSpawnContext(sender(), x)
     case x: ContextExists => handleContextExists(sender(), x)
   }
 
-  def doStartup(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start) {
     _configActor = message.configRef
   }
 
-  def doShutdown(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop) {
     // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
     var toStop = _runningContexts.size
     _runningContexts.foreach((a) => {
@@ -46,14 +43,6 @@ class ContextGroupOwnerActor extends BaseActor
         }
       })
     })
-  }
-
-  def handleConnectProfile(sender:ActorRef, message:ConnectProfile) {
-    _profileResource.set((a,loaded,c) => loaded(message.profileRef))
-  }
-
-  def handleDisconnectProfile(sender:ActorRef, message:DisconnectProfile) {
-    _profileResource.reset(None)
   }
 
   def handleManageContexts(sender:ActorRef, message:ManageContexts) {

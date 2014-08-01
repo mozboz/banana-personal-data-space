@@ -1,13 +1,14 @@
 package actors.behaviors
 
 import akka.actor.{Actor, ActorRef}
+import requests.ErrorResponse
 
 import scala.collection.mutable
 
 /**
  * Provides functions to aggregate responses from more than one actor.
  */
-trait Aggregator extends Actor with Requester {
+trait Aggregator extends Actor with Requester{
 
   def notifyOne(request:Request,
                 one:ActorRef,

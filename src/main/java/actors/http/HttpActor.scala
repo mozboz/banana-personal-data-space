@@ -17,11 +17,11 @@ class HttpActor extends BaseActor {
   import context.dispatcher // ExecutionContext for the futures and scheduler
   var profileAccessor: ActorRef = _
 
-  def doStartup(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start) {
 
   }
 
-  def doShutdown(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop) {
 
   }
 

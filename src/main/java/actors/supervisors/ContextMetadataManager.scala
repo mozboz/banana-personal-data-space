@@ -10,9 +10,9 @@ class ContextMetadataManager extends BaseActor {
     case _ =>
   }
 
-  def doStartup(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start) {
   }
 
-  def doShutdown(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop) {
   }
 }

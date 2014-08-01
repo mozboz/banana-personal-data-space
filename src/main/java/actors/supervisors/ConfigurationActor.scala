@@ -16,10 +16,10 @@ class ConfigurationActor extends BaseActor {
       case x:WriteConfig => handleWriteConfig(sender(), x)
   }
 
-  def doStartup(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start) {
   }
 
-  def doShutdown(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop) {
   }
 
   private def handleReadConfig(sender:ActorRef, message:ReadConfig) {

@@ -5,7 +5,6 @@ import actors.behaviors.Response
 import actors.supervisors._
 import akka.actor.{Props, ActorSystem}
 import com.typesafe.config.{Config, ConfigFactory}
-import events.{ConnectContextGroupOwner, ConnectProfile}
 import requests._
 import concurrent.Await
 import akka.pattern.ask
@@ -35,10 +34,10 @@ object BPDS extends App {
   val _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
 
   // Just for testing:
-  // Spawn and immediately stop an actor
-  val resp = _profileActor ? Spawn[TestSupervisor]()
+  // Spawn and immediately kill an actor
+  val resp = _profileActor ? Spawn(Props[TestSupervisor])
   Await.result(resp, timeout.duration).asInstanceOf[Response] match {
-    case x:SpawnResponse => _profileActor ! Stop(x.actorRef)
+    case x:SpawnResponse => _profileActor ! Kill(List(x.actorRef))
     case x:ErrorResponse => throw x.ex
   }
 
@@ -47,13 +46,13 @@ object BPDS extends App {
   _profileActor ! Start(_configurationActor)
 
   val _contextGroupOwner = system.actorOf(Props[ContextGroupOwnerActor], "ContextGroupOwner")
-  _contextGroupOwner ! ConnectProfile(_profileActor)
+  //_contextGroupOwner ! ConnectProfile(_profileActor)
   _contextGroupOwner ! Start(_configurationActor)
 
   val _contextGroupAccessor = system.actorOf(Props[ContextGroupAccessorActor], "ContextGroupAccessor")
   _contextGroupOwner ! ManageContexts(List("Context1", "Context2", "Context3"))
 
-  _contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
+  //_contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
   _contextGroupAccessor ! Start(_configurationActor)
 
   _contextGroupAccessor ! Write("Key1", "Value1", "Context1")

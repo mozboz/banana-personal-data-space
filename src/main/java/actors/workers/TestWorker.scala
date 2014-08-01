@@ -6,7 +6,7 @@ import requests.{Start,Stop}
 
 class TestWorker extends BaseActor {
 
-  def doStartup(sender:ActorRef, message:Start) {
+  def start(sender:ActorRef, message:Start) {
     println("doStartup " + actorId)
   }
 
@@ -14,7 +14,7 @@ class TestWorker extends BaseActor {
     case _ =>
   }
 
-  def doShutdown(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop) {
     println("doShutdown " + actorId)
   }
 }

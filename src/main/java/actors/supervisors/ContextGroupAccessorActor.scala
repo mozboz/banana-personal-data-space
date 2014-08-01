@@ -1,9 +1,7 @@
 package actors.supervisors
 
 import actors.behaviors._
-import akka.actor.{ActorRef, Actor}
-import akka.event.LoggingReceive
-import events.{DisconnectContextGroupOwner, ConnectContextGroupOwner, ContextStopped}
+import akka.actor.ActorRef
 import requests._
 import requests.{ReadResponse, ReadFromContext}
 import utils.{ResourceManager, BufferedResource}
@@ -47,18 +45,15 @@ class ContextGroupAccessorActor extends BaseActor {
 
 
   def handleRequest = {
-    case x: ContextStopped => handleContextStopped(sender(), x)
-    case x: ConnectContextGroupOwner => handleConnectContextGroupOwner(sender(),x)
-    case x: DisconnectContextGroupOwner => handleDisconnectContextOwner(sender(), x)
-    case x: Read => handleRead(sender(), x)
-    case x: Write => handleWrite(sender(), x)
+    case x: Read => handle[Read](sender(), x, read)
+    case x: Write => handle[Write](sender(), x, write)
   }
 
-  def doStartup(sender: ActorRef, message: Start) {
+  def start(sender: ActorRef, message: Start) {
 
   }
 
-  def doShutdown(sender:ActorRef, message:Stop) {
+  def stop(sender:ActorRef, message:Stop) {
     _contextResourceManager.keys().foreach(
       (key) => _contextResourceManager
         .get(key)
@@ -67,11 +62,7 @@ class ContextGroupAccessorActor extends BaseActor {
           (ex) => throw ex))
   }
 
-  private def handleContextStopped(sender: ActorRef, message:ContextStopped) {
-
-  }
-
-  private def handleRead(sender: ActorRef, message: Read) {
+  private def read(sender: ActorRef, message: Read) {
     withContext(message.fromContext)(
       (contextActorRef) => {
         readFromContext(
@@ -85,7 +76,7 @@ class ContextGroupAccessorActor extends BaseActor {
     )
   }
 
-  private def handleWrite(sender: ActorRef, message: Write) {
+  private def write(sender: ActorRef, message: Write) {
     withContext(message.toContext)(
       (contextActorRef) => {
         writeToContext(
@@ -98,14 +89,6 @@ class ContextGroupAccessorActor extends BaseActor {
       },
       error = (ex) => sender ! ErrorResponse(message, ex)
     )
-  }
-
-  private def handleDisconnectContextOwner(sender:ActorRef, message:DisconnectContextGroupOwner) {
-    _lazyContextGroupOwner.reset(None)
-  }
-
-  private def handleConnectContextGroupOwner(sender:ActorRef, message:ConnectContextGroupOwner) {
-    _lazyContextGroupOwner.set((a, loaded, b) => loaded(message.contextGroupOwnerRef))
   }
 
   /**
