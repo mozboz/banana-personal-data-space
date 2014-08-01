@@ -23,7 +23,7 @@ import utils.{ResourceManager, BufferedResource}
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextGroupAccessorActor extends BaseActor {
+class ContextGroupAccessorActor extends WorkerActor {
 
   /**
    * Represents a future for the context group owner actor. This actor ref is necessary to

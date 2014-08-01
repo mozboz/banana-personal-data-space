@@ -1,6 +1,6 @@
 package actors.supervisors
 
-import actors.behaviors.{BaseActor, RequestHandler}
+import actors.behaviors.{WorkerActor, RequestHandler}
 import akka.actor.{Props, ActorRef}
 import requests._
 import utils.BufferedResource
@@ -10,7 +10,7 @@ import scala.collection.mutable
 /**
  * Is responsible to spawn and stop context actors on request.
  */
-class ContextGroupOwnerActor extends BaseActor
+class ContextGroupOwnerActor extends WorkerActor
                              with RequestHandler {
 
   val _managedContexts = new mutable.HashSet[String]

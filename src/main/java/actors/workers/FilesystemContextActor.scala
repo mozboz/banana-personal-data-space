@@ -13,7 +13,7 @@ import akka.actor.ActorRef
 import requests._
 import utils.BufferedResource
 
-class FilesystemContextActor extends BaseActor {
+class FilesystemContextActor extends WorkerActor {
 
   private val _fileChannelResource = new BufferedResource[String, FileChannel]("File")
 

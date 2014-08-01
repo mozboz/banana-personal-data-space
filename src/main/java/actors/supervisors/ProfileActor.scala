@@ -5,7 +5,7 @@ import akka.actor.{ActorRef, Actor}
 import requests.{Start, Stop, ContextExistsResponse, ContextExists}
 
 
-class ProfileActor extends BaseActor {
+class ProfileActor extends WorkerActor {
 
   def handleRequest = handleResponse orElse {
     case x:ContextExists => handleContextExists(sender(), x)

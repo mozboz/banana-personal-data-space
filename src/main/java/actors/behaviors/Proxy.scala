@@ -3,7 +3,7 @@ package actors.behaviors
 
 import akka.actor.ActorRef
 
-trait Proxy extends BaseActor{
+trait Proxy extends WorkerActor{
   /**
    * Proxies the request to the "to"-Actor and then passes the response to the original Requester.
    * @param request The request to proxy

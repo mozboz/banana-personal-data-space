@@ -7,11 +7,11 @@ import spray.http._
 import HttpMethods._
 import MediaTypes._
 import requests._
-import actors.behaviors.BaseActor
+import actors.behaviors.WorkerActor
 import requests.SetProfileAccessor
 import requests.ErrorResponse
 
-class HttpActor extends BaseActor {
+class HttpActor extends WorkerActor {
 
   implicit val timeout: Timeout = 1 // for the actor 'asks'
   import context.dispatcher // ExecutionContext for the futures and scheduler

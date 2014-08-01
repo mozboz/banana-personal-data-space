@@ -11,11 +11,8 @@ import scala.collection.mutable
 /**
  * Provides convenient access to the configuration system and handles the startup and shutdown procedure.
  */
-abstract class BaseActor extends Actor
-                         with Requester
-                         with RequestHandler
-                         with Aggregator
-                         with Supervisor {
+abstract class WorkerActor extends Actor
+                         with Configurable {
 
   private val _actorId = UUID.randomUUID()
   def actorId = _actorId
@@ -27,7 +24,7 @@ abstract class BaseActor extends Actor
    * @return
    */
   def receive = LoggingReceive(
-    handleSupervisorMessages orElse
+    handleConfigurableMessages orElse
     handleResponse orElse
     handleRequest
   )

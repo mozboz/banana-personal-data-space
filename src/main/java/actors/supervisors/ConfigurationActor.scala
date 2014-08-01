@@ -1,11 +1,11 @@
 package actors.supervisors
 
-import actors.behaviors.BaseActor
+import actors.behaviors.WorkerActor
 import akka.actor.ActorRef
 import requests.{WriteConfig, Start, ReadConfig, Stop}
 import requests.config.{GetContextDataFilePathResponse, GetContextDataFilePath}
 
-class ConfigurationActor extends BaseActor {
+class ConfigurationActor extends WorkerActor {
 
   private val _dataFolder = System.getProperty("home")
 

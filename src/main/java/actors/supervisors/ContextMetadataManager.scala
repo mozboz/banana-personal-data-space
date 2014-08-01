@@ -1,10 +1,10 @@
 package actors.supervisors
 
-import actors.behaviors.BaseActor
+import actors.behaviors.WorkerActor
 import akka.actor.ActorRef
 import requests.{Start,Stop}
 
-class ContextMetadataManager extends BaseActor {
+class ContextMetadataManager extends WorkerActor {
 
   def handleRequest = {
     case _ =>

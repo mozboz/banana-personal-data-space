@@ -1,10 +1,10 @@
 package actors.supervisors
 
-import actors.behaviors.BaseActor
+import actors.behaviors.WorkerActor
 import akka.actor.ActorRef
 import requests.{Start,Stop}
 
-class TestSupervisor extends BaseActor {
+class TestSupervisor extends WorkerActor {
 
   def start(sender:ActorRef, message:Start) {
     println("doStartup " + actorId)
