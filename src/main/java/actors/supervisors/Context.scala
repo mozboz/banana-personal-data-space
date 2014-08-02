@@ -21,12 +21,7 @@ import scala.collection.mutable
  */
 class Context extends WorkerActor with Proxy  {
 
-  // @todo: Implement the metadata stuff
   private val _referencedContexts = new mutable.HashMap[String, ActorRef]
-  /**
-   * Contains references to the actor which represents the context from which a context is referenced.
-   * Key:Uri, Val:ActorRef
-   */
   private val _referencedByContexts = new mutable.HashMap[String, ActorRef]
   private val _aggregatesContexts = new mutable.HashMap[String, ActorRef]
 
@@ -37,35 +32,18 @@ class Context extends WorkerActor with Proxy  {
   self ! ConnectContextBackend(_fsBackendActor)*/
 
   def handleRequest = {
+    case x: Read => handle[Read](sender(), x, read)
+    case x: Write => handle[Write](sender(), x, write)
     case x: AggregateContext => handle[AggregateContext](sender(), x, aggregateContext)
-    case x: ReadFromContext => handle[ReadFromContext](sender(), x, readFromContext)
-    case x: WriteToContext => handle[WriteToContext](sender(), x, writeToContext)
     case x: AddReferencedBy => handle[AddReferencedBy](sender(), x, addReferencedBy)
     case x: AddReferenceTo => handle[AddReferenceTo](sender(), x, addReferenceTo)
   }
 
   def start(sender:ActorRef, message:Start, started:() => Unit) {
-    // @todo: Implement setup logic
-    // @todo: Which URI does this context have?
-    /*_contextBackend.withResource(
-      (actor) => {
-        actor ! message // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
-        sender ! StartupResponse(message)
-      },
-      (ex) => sender ! ErrorResponse(message, ex)
-    )*/
+
   }
 
   def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
-    /*_contextBackend.withResource(
-      (actor) => {
-        actor ! message // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
-        aggregateSome(message, List(actor), (response,sender,done) => {
-          self ! DisconnectContextBackend
-          done()
-        })
-      },
-      (ex) => throw ex)*/
   }
 
   private def addReferenceTo(sender:ActorRef, message:AddReferenceTo) {
@@ -83,13 +61,13 @@ class Context extends WorkerActor with Proxy  {
     _aggregatesContexts.put(message.uri, message.actor)
   }
 
-  private def readFromContext(sender:ActorRef, message:ReadFromContext) {
+  private def read(sender:ActorRef, message:Read) {
     withContextBackend(
       (backend) => proxy(message, backend, sender),
       (exception) => throw exception)
   }
 
-  private def writeToContext(sender:ActorRef, message:WriteToContext) {
+  private def write(sender:ActorRef, message:Write) {
     withContextBackend(
       (backend) => proxy(message, backend, sender),
       (exception) => throw exception)

@@ -8,7 +8,6 @@ import HttpMethods._
 import MediaTypes._
 import requests._
 import actors.behaviors.WorkerActor
-import requests.SetProfileAccessor
 import requests.ErrorResponse
 
 class HttpActor extends WorkerActor {
@@ -41,10 +40,6 @@ class HttpActor extends WorkerActor {
         case x:ReadResponse => s ! HttpResponse(entity = HttpEntity(`text/html`, x.data))
         case x:ErrorResponse => s ! ErrorResponse(req, x.ex)
       }})
-
-    case SetProfileAccessor(profileActor) => {
-      profileAccessor = profileActor
-    }
       /*
     case HttpRequest(GET, Uri.Path("/crash"), _, _, _) =>
       sender ! HttpResponse(entity = "About to throw an exception in the request handling actor, " +

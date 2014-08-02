@@ -17,41 +17,38 @@ class Profile extends SupervisorActor {
 
   def start(sender:ActorRef, message:Start, started:() => Unit) {
 
-    val joiner = join(2, started)
+    val join = joiner(2, started)
 
-    aggregateOne(Spawn(Props[ContextGroup], "localContexts"), self, (response,sender) => {
-      response match {
-        case x:SpawnResponse => _localContexts.set((key, resource, error) => {
-          resource.apply(x.actorRef)
-          joiner()
+    request[SpawnResponse](Spawn(Props[ContextGroup], "localContexts"), self,
+      (response) => {
+        _localContexts.set((key, resource, error) => {
+          resource(response.actorRef)
+          join()
         })
-        case x:ErrorResponse => throw x.ex
-      }
-    })
-    aggregateOne(Spawn(Props[ContextGroup], "remoteContexts"), self, (response,sender) => {
-      response match {
-        case x:SpawnResponse => _remoteContexts.set((key, resource, error) => {
-          resource.apply(x.actorRef)
-          joiner()
+      },
+      (ex) => throw ex)
+
+    request[SpawnResponse](Spawn(Props[ContextGroup], "remoteContexts"), self,
+      (response) => {
+        _remoteContexts.set((key, resource, error) => {
+          resource(response.actorRef)
+          join()
         })
-        case x:ErrorResponse => throw x.ex
-      }
-    })
+      },
+      (ex) => throw ex)
   }
 
   def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
 
-    val joiner = join(2, stopped)
+    val join = joiner(2, stopped)
 
     _localContexts.withResource((actor) => {
-      // @todo: Doesn't cover the error case yet
-      aggregateOne(Kill("localContexts"), self, (response,sender) => joiner())
+      request[KillResponse](Kill("localContexts"), self, (r) => join(), (ex) => throw ex)
     }, (error) => {
       throw error
     })
     _remoteContexts.withResource((actor) => {
-      // @todo: Doesn't cover the error case yet
-      aggregateOne(Kill("remoteContexts"), self, (response,sender) => joiner())
+      request[KillResponse](Kill("remoteContexts"), self, (r) => join(), (ex) => throw ex)
     }, (error) => {
       throw error
     })
