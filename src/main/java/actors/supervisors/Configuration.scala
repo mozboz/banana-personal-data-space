@@ -4,7 +4,7 @@ import actors.behaviors.RequestHandler
 import akka.actor.{Actor, ActorRef}
 import requests.{ReadConfigResponse, WriteConfig, ReadConfig}
 
-class ConfigurationActor extends Actor with RequestHandler {
+class Configuration extends Actor with RequestHandler {
 
   def receive = handleRequest
 

@@ -1,7 +1,7 @@
 package actors.supervisors
 
 import actors.behaviors._
-import akka.actor.ActorRef
+import akka.actor.{Props, ActorRef}
 import requests._
 import requests.{ReadResponse, ReadFromContext}
 import utils.{ResourceManager, BufferedResource}
@@ -23,25 +23,11 @@ import utils.{ResourceManager, BufferedResource}
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextGroupAccessorActor extends WorkerActor {
-
-  /**
-   * Represents a future for the context group owner actor. This actor ref is necessary to
-   * spawn contexts so it blocks all following requests if its not available and the requested
-   * contexts are not running.
-   */
-  private val _lazyContextGroupOwner = new BufferedResource[String, ActorRef]("ContextGroupOwner")
-
+class ContextGroup extends WorkerActor {
   /**
    * Manages the access to all context resources and can spawn new contexts by asking the context owner to do so.
    */
-  private val _contextResourceManager = new ResourceManager[String, ActorRef](
-    (a, b, c) => {
-      _lazyContextGroupOwner.withResource(
-        (contextGroupOwner) => startContext(a, contextGroupOwner, b, c),
-        (exception) => c.apply(exception)
-      )
-    })
+  private val _contextResourceManager = new ResourceManager[String, ActorRef](startContext)
 
 
   def handleRequest = {
@@ -102,20 +88,11 @@ class ContextGroupAccessorActor extends WorkerActor {
    * Asks the ContextGroupOwner to spawn the specified context.
    */
   private def startContext(contextKey: String,
-                           contextGroupOwner: ActorRef,
                            started: (ActorRef) => Unit,
                            error: (Exception) => Unit) {
-
-    if (!_lazyContextGroupOwner.isInitialized) {
-      // @todo: Notify "someone" about the missing dependency (maybe throttled)
-    }
-
-    aggregateOne(SpawnContext(contextKey), contextGroupOwner, (response, sender) => {
-      response match {
-        case x: SpawnContextResponse => started(x.actorRef)
-        case x: ErrorResponse => error(new Exception("Error while starting the context " + contextKey, x.ex))
-      }
-    })
+    request[SpawnResponse](Spawn(Props[Context], contextKey), self,
+      (response) => started(response.actorRef),
+      (exception) => error(exception))
   }
 
   /**
@@ -125,12 +102,9 @@ class ContextGroupAccessorActor extends WorkerActor {
                               dataKey: String,
                               data: (String) => Unit,
                               error: (Exception) => Unit) {
-    aggregateOne(ReadFromContext(dataKey), actorRef, (response, sender) => {
-      response match {
-        case x: ReadResponse => data(x.data)
-        case x: ErrorResponse => error(new Exception("Error while reading from context. Data key: " + dataKey, x.ex))
-      }
-    })
+    request[ReadResponse](ReadFromContext(dataKey), self,
+      (response) => data(response.data),
+      (exception) => error(new Exception("Error while reading from context. Data key: " + dataKey, exception)))
   }
 
   /**
@@ -141,11 +115,8 @@ class ContextGroupAccessorActor extends WorkerActor {
                              data: () => String,
                              success: () => Unit,
                              error: (Exception) => Unit) {
-    aggregateOne(WriteToContext(dataKey, data()), actorRef, (response, sender) => {
-      response match {
-        case x: WriteResponse => success()
-        case x: ErrorResponse => error(new Exception("Error while writing to context. Data key: " + dataKey, x.ex))
-      }
-    })
+    request[WriteResponse](WriteToContext(dataKey, data()), self,
+      (response) => success(),
+      (exception) => error(new Exception("Error while writing to context. Data key: " + dataKey, exception)))
   }
 }

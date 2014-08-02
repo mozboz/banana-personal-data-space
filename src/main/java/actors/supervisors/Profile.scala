@@ -6,7 +6,7 @@ import requests._
 import utils.BufferedResource
 
 
-class ProfileActor extends SupervisorActor {
+class Profile extends SupervisorActor {
 
   var _localContexts  = new BufferedResource[String, ActorRef]("localContexts")
   var _remoteContexts  = new BufferedResource[String, ActorRef]("remoteContexts")
@@ -19,7 +19,7 @@ class ProfileActor extends SupervisorActor {
 
     val joiner = join(2, started)
 
-    aggregateOne(Spawn(Props[ContextGroupAccessorActor], "localContexts"), self, (response,sender) => {
+    aggregateOne(Spawn(Props[ContextGroup], "localContexts"), self, (response,sender) => {
       response match {
         case x:SpawnResponse => _localContexts.set((key, resource, error) => {
           resource.apply(x.actorRef)
@@ -28,7 +28,7 @@ class ProfileActor extends SupervisorActor {
         case x:ErrorResponse => throw x.ex
       }
     })
-    aggregateOne(Spawn(Props[ContextGroupAccessorActor], "remoteContexts"), self, (response,sender) => {
+    aggregateOne(Spawn(Props[ContextGroup], "remoteContexts"), self, (response,sender) => {
       response match {
         case x:SpawnResponse => _remoteContexts.set((key, resource, error) => {
           resource.apply(x.actorRef)

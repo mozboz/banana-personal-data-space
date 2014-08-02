@@ -30,8 +30,8 @@ object BPDS extends App {
   implicit val system = ActorSystem("ProfileSystem", config)
   implicit val timeout = Timeout(1000)
 
-  val _configurationActor = system.actorOf(Props[ConfigurationActor], "ConfigurationActor")
-  val _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
+  val _configurationActor = system.actorOf(Props[Configuration], "ConfigurationActor")
+  val _profileActor = system.actorOf(Props[Profile], "ProfileActor")
 
   _profileActor ! Start(_configurationActor)
   _profileActor ! Stop(_profileActor)

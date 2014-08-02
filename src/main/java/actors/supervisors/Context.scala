@@ -19,7 +19,7 @@ import scala.collection.mutable
  * * ReadFromContext
  * * WriteToContext
  */
-class ContextActor extends WorkerActor with Proxy  {
+class Context extends WorkerActor with Proxy  {
 
   // @todo: Implement the metadata stuff
   private val _referencedContexts = new mutable.HashMap[String, ActorRef]

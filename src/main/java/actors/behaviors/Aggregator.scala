@@ -12,9 +12,9 @@ trait Aggregator extends Actor with Requester{
 
   /**
    * Can be used to join different execution branches together.
-   * @param times How many paths to join
+   * @param times How many branches to join
    * @param joined The continuation which is called when all branches were joined
-   * @return The join counter
+   * @return The join counter function
    */
   def join(times:Int, joined:() => Unit) : () => Unit = {
     var remaining = times
@@ -61,6 +61,24 @@ trait Aggregator extends Actor with Requester{
         childActor ! request
       }
     }
+  }
+
+  /**
+   * Requests a value from another actor.
+   * @param request The request
+   * @param targetActor The target actor
+   * @param success Success continuation with response as parameter
+   * @param error Error continuation with exception as parameter
+   * @tparam TResponse The requested response type
+   */
+  def request[TResponse](request:Request, targetActor:ActorRef, success:(TResponse) => Unit, error:(Exception) => Unit) {
+    aggregateOne(request, targetActor, (response, sender) => {
+      response match {
+        case x:ErrorResponse => error(x.ex)
+        case x:TResponse => success(x)
+        case _ => error(new Exception("The response was not understood."))
+      }
+    })
   }
 
   /**

@@ -87,22 +87,6 @@ trait Requester extends Actor {
   }
 
   /**
-   * Issues a request and executes a continuation on its response.
-   * @param request The request
-   * @param to The receiver
-   * @param sender The sender
-   * @param onResponse The continuation
-   */
-  @Deprecated
-  def onResponseOf(request: Request, to: ActorRef, sender:ActorRef, onResponse: (Response) => (Unit)) {
-    startListen(request.messageId, (response, sender, handled) => {
-      onResponse(response)
-      handled()
-    })
-    to.tell(request, sender)
-  }
-
-  /**
    * Registers a continuation which is executed whenever a response
    * to the issued request arrives. To stop handling the responses
    * of a specific request, the handled-callback must be called from
