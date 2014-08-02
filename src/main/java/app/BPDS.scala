@@ -28,13 +28,29 @@ object BPDS extends App {
        }""").withFallback(ConfigFactory.load())
 
   implicit val system = ActorSystem("ProfileSystem", config)
-  implicit val timeout = Timeout(1000)
+  implicit val timeout = Timeout(100)
 
-  val _configurationActor = system.actorOf(Props[Configuration], "ConfigurationActor")
-  val _profileActor = system.actorOf(Props[Profile], "ProfileActor")
+  val _configurationActor = system.actorOf(Props[Configuration], "Configuration")
+  val _profileActor = system.actorOf(Props[Profile], "Profile")
 
-  _profileActor ! Start(_configurationActor)
-  _profileActor ! Stop(_profileActor)
+  _configurationActor ! WriteConfig("profileActor", _profileActor)
+
+  val _httpActor = system.actorOf(Props[HttpActor], "HttpActor")
+
+  IO(Http) ! Http.Bind(_httpActor, interface = "0.0.0.0", port = 8080)
+
+  val future =  _profileActor ? Start(_configurationActor)
+  val result = Await.result(future, timeout.duration).asInstanceOf[Response]
+
+  result match {
+    case x:StartResponse => {
+      _profileActor ! Write("key1", "value1", "context1")
+      _profileActor ! Read("key1", "context1")
+      //_profileActor ! Stop(_profileActor)
+    }
+  }
+
+
 
 
   /*

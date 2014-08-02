@@ -1,5 +1,7 @@
 package actors.workers
 
+import java.io.RandomAccessFile
+
 import scala.util.control.Breaks._
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
@@ -10,11 +12,13 @@ import akka.actor.ActorRef
 import requests._
 import utils.BufferedResource
 
-class FilesystemContextActor extends WorkerActor {
+class FilesystemContext extends WorkerActor {
 
   private val _file = new BufferedResource[String, FileChannel]("File")
-  private var _index = new KeyMapIndex(context.self.path.name)
+  private var _index = new KeyMapIndex(name)
   private var _folder = ""
+
+  def name = context.parent.path.name
 
   def handleRequest = {
     case x:Read => read(sender(), x)
@@ -22,37 +26,22 @@ class FilesystemContextActor extends WorkerActor {
   }
 
   def start(sender:ActorRef, message:Start, started:() => Unit) {
-    /*
-    // @todo: integrate the backend-actor into the initialization-hierarchy by adding it as a child
-    onResponseOf(GetContextDataFilePath(context.self.path.name), message.configRef, self, {
-      case x:GetContextDataFilePathResponse =>
-        _folder = x.path
-        self ! ConnectFile(_folder + context.self.path.name + ".txt")
-        sender ! StartupResponse(message)
-
-      case x:ErrorResponse => throw x.ex
-    })*/
+    request[ReadConfigResponse](ReadConfig("dataFolder"), message.configRef,
+      (response) => {
+        _folder = response.value.asInstanceOf[String]
+        _file.set((key, channel, ex) => {
+           val file = new RandomAccessFile(_folder + name, "rw")
+          channel(file.getChannel)
+        })
+      },
+      (ex) => throw ex)
+    started()
   }
 
   def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
-    /*
-    self ! DisconnectFile()
-    sender ! StopResponse
-    */
+    // @todo: Implement stop
+    stopped()
   }
-
-  /*
-  private def handleConnectFile(sender:ActorRef, message:ConnectFile) {
-    _index = new KeyMapFilesystemPersistence().load(_folder, context.self.path.name)
-    _file.set((a,b,c) => b.apply(new RandomAccessFile(message.path, "rw").getChannel))
-  }
-
-  private def handleDisconnectFile(sender:ActorRef, message:DisconnectFile) {
-    _file.reset(Some((channel) => channel.close()))
-    new KeyMapFilesystemPersistence().save(_index, _folder)
-    // @todo: There should be a way to notify the caller about the failure of the clean-up action (Request/Response?)
-  }
-*/
 
   private def read(sender:ActorRef, message:Read) {
     readFromDataFile(message.key,
@@ -64,16 +53,14 @@ class FilesystemContextActor extends WorkerActor {
     appendToDataFile(message.key, message.value,
       (indexEntry) => try {
         _index.add(indexEntry)
+        sender ! WriteResponse(message)
       } catch {
         case x:Exception => sender ! ErrorResponse(message, x)
       },
       // @todo: There should be two types of write response: 'accepted' and 'written'
-      // the last should be sent here 'whenWritten'
-      (exception) => sender ! ErrorResponse(message, exception)
-    )
-    // @todo: There should be two types of write response: 'accepted' and 'written'
-    // where the first would be here
-    sender ! WriteResponse(message)
+      (exception) => {
+        sender ! ErrorResponse(message, exception)
+      })
   }
 
   /**

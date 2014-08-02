@@ -8,19 +8,24 @@ class Configuration extends Actor with RequestHandler {
 
   def receive = handleRequest
 
+  var _profileActor : ActorRef = _
+
   def handleRequest = {
       case x:ReadConfig => handle[ReadConfig](sender(), x, handleReadConfig)
       case x:WriteConfig => handle[WriteConfig](sender(), x, handleWriteConfig)
   }
 
   private def handleReadConfig(sender:ActorRef, message:ReadConfig) {
-    if (message.key == "dataFolder")
-      sender ! ReadConfigResponse(message, System.getProperty("home"))
-
-    throw new Exception("Unknown config key: " + message.key)
+    message.key match {
+      case "dataFolder" => sender ! ReadConfigResponse(message, System.getProperty("home"))
+      case "profileActor" => sender ! ReadConfigResponse(message, _profileActor)
+      case _ => throw new Exception("Unknown config key: " + message.key)
+    }
   }
 
   private def handleWriteConfig(sender:ActorRef, message:WriteConfig) {
-    throw new Exception("Writing to the configuration is not yet implemented.")
+    message.key match {
+      case "profileActor" => _profileActor = message.value.asInstanceOf
+    }
   }
 }

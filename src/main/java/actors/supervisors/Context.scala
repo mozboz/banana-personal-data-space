@@ -1,7 +1,7 @@
 package actors.supervisors
 
 import actors.behaviors._
-import actors.workers.FilesystemContextActor
+import actors.workers.FilesystemContext
 import akka.actor.{Props, ActorRef}
 import requests._
 import utils.BufferedResource
@@ -19,17 +19,12 @@ import scala.collection.mutable
  * * ReadFromContext
  * * WriteToContext
  */
-class Context extends WorkerActor with Proxy  {
+class Context extends SupervisorActor with Proxy  {
 
-  private val _referencedContexts = new mutable.HashMap[String, ActorRef]
-  private val _referencedByContexts = new mutable.HashMap[String, ActorRef]
-  private val _aggregatesContexts = new mutable.HashMap[String, ActorRef]
-
-  private val _contextBackend = new BufferedResource[String,ActorRef]("ContextBackend")
-
-  // @todo: only for testing
-  /*private val _fsBackendActor = context.actorOf(Props[FilesystemContextActor], context.self.path.name)
-  self ! ConnectContextBackend(_fsBackendActor)*/
+  var _referencedBy  = new BufferedResource[String, ActorRef]("referencedBy")
+  var _referencesTo  = new BufferedResource[String, ActorRef]("referencesTo")
+  var _aggregates  = new BufferedResource[String, ActorRef]("aggregates")
+  var _data  = new BufferedResource[String, ActorRef]("data")
 
   def handleRequest = {
     case x: Read => handle[Read](sender(), x, read)
@@ -40,44 +35,40 @@ class Context extends WorkerActor with Proxy  {
   }
 
   def start(sender:ActorRef, message:Start, started:() => Unit) {
+    _referencedBy.set((key, ref, error) => {
+      ref(context.child(key).get)
+    })
+    _referencesTo.set((key, ref, error) => {
+      ref(getActor(key).get)
+    })
+    _aggregates.set((key, ref, error) => {
+      ref(getActor(key).get)
+    })
+    _data.set((key, ref, error) => {
+      ref(getActor(key).get)
+    })
 
+    started()
   }
 
   def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
+    stopped()
   }
 
   private def addReferenceTo(sender:ActorRef, message:AddReferenceTo) {
-    // @todo: implement the AddReferenceTo behavior
-    _referencedContexts.put(message.uri, message.actor)
   }
 
   private def addReferencedBy(sender:ActorRef, message:AddReferencedBy) {
-    // @todo: implement the AddReferencedBy behavior
-    _referencedByContexts.put(message.uri, message.actor)
   }
 
   private def aggregateContext(sender:ActorRef, message:AggregateContext) {
-    // @todo: implement the AggregateContext behavior
-    _aggregatesContexts.put(message.uri, message.actor)
   }
 
   private def read(sender:ActorRef, message:Read) {
-    withContextBackend(
-      (backend) => proxy(message, backend, sender),
-      (exception) => throw exception)
+    _data.withResource((data) => proxy(message, data, sender), (ex) => throw ex)
   }
 
   private def write(sender:ActorRef, message:Write) {
-    withContextBackend(
-      (backend) => proxy(message, backend, sender),
-      (exception) => throw exception)
-  }
-
-  private def withContextBackend (withContextBackend : (ActorRef) => Unit,
-                                  onError : (Exception) => Unit) {
-    if (!_contextBackend.isInitialized) {
-      // @todo: Notify "someone" about the missing dependency (maybe throttled)
-    }
-    _contextBackend.withResource(withContextBackend, onError)
+    _data.withResource((data) => proxy(message, data, sender), (ex) => throw ex)
   }
 }

@@ -6,13 +6,26 @@ import requests._
 import utils.BufferedResource
 
 
-class Profile extends SupervisorActor {
+class Profile extends SupervisorActor with Proxy {
 
   var _localContexts  = new BufferedResource[String, ActorRef]("localContexts")
   var _remoteContexts  = new BufferedResource[String, ActorRef]("remoteContexts")
 
   def handleRequest = handleResponse orElse {
-    case x:ContextExists => handleContextExists(sender(), x)
+    case x:Read => handle[Read](sender(), x, read)
+    case x:Write => handle[Write](sender(), x, write)
+    case x:ContextExists => handle[ContextExists](sender(), x, contextExists)
+  }
+
+
+  def read(sender:ActorRef, message:Read) {
+    // @todo: Forward to the corresponding ContextGroup
+    _localContexts.withResource((group) => proxy(message, group, sender), (ex) => throw ex)
+  }
+
+  def write(sender:ActorRef, message:Write) {
+    // @todo: Forward to the corresponding ContextGroup
+    _localContexts.withResource((group) => proxy(message, group, sender), (ex) => throw ex)
   }
 
   def start(sender:ActorRef, message:Start, started:() => Unit) {
@@ -54,7 +67,7 @@ class Profile extends SupervisorActor {
     })
   }
 
-  private def handleContextExists(sender:ActorRef, message:ContextExists) {
+  private def contextExists(sender:ActorRef, message:ContextExists) {
     sender ! ContextExistsResponse(message, exists = true)
   }
 }

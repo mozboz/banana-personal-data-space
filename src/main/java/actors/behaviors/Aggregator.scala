@@ -71,11 +71,11 @@ trait Aggregator extends Actor with Requester{
    * @param error Error continuation with exception as parameter
    * @tparam TResponse The requested response type
    */
-  def request[TResponse](request:Request, targetActor:ActorRef, success:(TResponse) => Unit, error:(Exception) => Unit) {
+  def request[TResponse <: Response](request:Request, targetActor:ActorRef, success:(TResponse) => Unit, error:(Exception) => Unit) {
     aggregateOne(request, targetActor, (response, sender) => {
       response match {
         case x:ErrorResponse => error(x.ex)
-        case x:TResponse => success(x)
+        case x:Response => success(x.asInstanceOf[TResponse])
         case _ => error(new Exception("The response was not understood."))
       }
     })

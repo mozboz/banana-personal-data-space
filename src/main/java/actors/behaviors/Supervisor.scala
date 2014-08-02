@@ -32,6 +32,10 @@ trait Supervisor extends Actor with Aggregator
     }
   }
 
+  def getActor(id:String) : Option[ActorRef] = {
+    _supervisedActors.get(id)
+  }
+
   def spawn(sender: ActorRef, message: Spawn) {
     val actorRef = context.actorOf(message.props, message.id)
     _supervisedActors.put(message.id, actorRef)
