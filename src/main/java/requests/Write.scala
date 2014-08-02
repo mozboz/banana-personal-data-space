@@ -10,5 +10,3 @@ import actors.behaviors.{Response, Request}
  */
 case class Write(key:String, value:String, toContext:String) extends Request
 case class WriteResponse(request:Request) extends Response(request.messageId)// @todo: Change this back to messageId only to prevent sending the whole request with every answer
-
-case class WriteToContext(key:String, value:String) extends Request

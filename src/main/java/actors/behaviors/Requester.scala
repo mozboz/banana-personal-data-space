@@ -61,45 +61,11 @@ trait Requester extends Actor {
   }
 
   /**
-   * Curried function which is passed into the response handler.
+   * Stops listening to responses of the specified request.
    * @param requestId The request id
    */
-  private def handled(requestId:UUID) () {
-    stopListen(requestId)
-  }
-
-
-  /**
-   * Stops listening to the responses for the supplied request id.
-   * @param requestId The request id.
-   */
-  def stopListen(requestId:UUID) {
+  def handled(requestId:UUID) () {
     _waiting.remove(requestId)
-  }
-
-  /**
-   * Starts listening to responses to the specified request id.
-   * @param requestId The id of the request
-   * @param onResponse The response continuation
-   */
-  private def startListen(requestId:UUID, onResponse:ResponseContinuation) {
-    _waiting.put(requestId, onResponse)
-  }
-
-  /**
-   * Issues a request and executes a continuation on its response.
-   * @param request The request
-   * @param to The receiver
-   * @param sender The sender
-   * @param onResponse The continuation
-   */
-  @Deprecated
-  def onResponseOf(request: Request, to: ActorRef, sender:ActorRef, onResponse: (Response) => (Unit)) {
-    startListen(request.messageId, (response, sender, handled) => {
-      onResponse(response)
-      handled()
-    })
-    to.tell(request, sender)
   }
 
   /**
@@ -112,6 +78,6 @@ trait Requester extends Actor {
    * @param onResponse The on-response continuation
    */
   def expectResponse(request:Request, onResponse:(Response, ActorRef, () => Unit) => Unit) {
-    startListen(request.messageId, onResponse)
+    _waiting.put(request.messageId, onResponse)
   }
 }

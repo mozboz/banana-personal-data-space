@@ -7,21 +7,25 @@ import spray.http._
 import HttpMethods._
 import MediaTypes._
 import requests._
-import actors.behaviors.BaseActor
-import requests.SetProfileAccessor
+import actors.behaviors.WorkerActor
 import requests.ErrorResponse
 
-class HttpActor extends BaseActor {
+class HttpActor extends WorkerActor {
 
-  implicit val timeout: Timeout = 1 // for the actor 'asks'
-  import context.dispatcher // ExecutionContext for the futures and scheduler
-  var profileAccessor: ActorRef = _
+  //implicit val timeout: Timeout = 1 // for the actor 'asks'
+  //import context.dispatcher // ExecutionContext for the futures and scheduler
+  var _profile: ActorRef = _
 
-  def doStartup(sender:ActorRef, message:Startup) {
-
+  def start(sender:ActorRef, message:Start, started:() => Unit) {
+    request[ReadConfigResponse](ReadConfig("profileActor"), message.configRef,
+      (response) => {
+        _profile = response.value.asInstanceOf
+        started()
+      },
+      (ex) => throw ex)
   }
 
-  def doShutdown(sender:ActorRef, message:Shutdown) {
+  def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
 
   }
 
@@ -32,19 +36,13 @@ class HttpActor extends BaseActor {
     case HttpRequest(GET, Uri.Path(path), _, _, _) =>
       val s = sender()
 
-      val req = Read(path.stripPrefix("/"), "Context2")
+      val req = Read(path.stripPrefix("/"), "Context1")
 
-      //onResponseOf(req ,profileAccessor,self,  {
-
-      aggregateOne(req, profileAccessor, (response, sender, done) => {
+      aggregateOne(req, _profile, (response, sender) => {
         response match {
         case x:ReadResponse => s ! HttpResponse(entity = HttpEntity(`text/html`, x.data))
         case x:ErrorResponse => s ! ErrorResponse(req, x.ex)
       }})
-
-    case SetProfileAccessor(profileActor) => {
-      profileAccessor = profileActor
-    }
       /*
     case HttpRequest(GET, Uri.Path("/crash"), _, _, _) =>
       sender ! HttpResponse(entity = "About to throw an exception in the request handling actor, " +
@@ -71,34 +69,4 @@ class HttpActor extends BaseActor {
       )
         */
   }
-
-  ////////////// helpers //////////////
-
-  lazy val index = HttpResponse(
-    entity = HttpEntity(`text/html`,
-      """<html>
-        <body>
-          <h1>Say hello to <i>spray-can</i>!</h1>
-          <p>Defined resources:</p>
-          <ul>
-            <li><a href="/ping">/ping</a></li>
-            <li><a href="/stream">/stream</a></li>
-            <li><a href="/server-stats">/server-stats</a></li>
-            <li><a href="/crash">/crash</a></li>
-            <li><a href="/timeout">/timeout</a></li>
-            <li><a href="/timeout/timeout">/timeout/timeout</a></li>
-            <li><a href="/stop">/stop</a></li>
-          </ul>
-          <p>Test file upload</p>
-          <form action ="/file-upload" enctype="multipart/form-data" method="post">
-            <input type="file" name="datafile" multiple=""></input>
-            <br/>
-            <input type="submit">Submit</input>
-          </form>
-        </body>
-      </html>"""
-    )
-  )
-
-
 }
