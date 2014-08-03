@@ -75,7 +75,6 @@ class FilesystemContext extends WorkerActor {
                  length:Int,
                  withBuffer:(MappedByteBuffer) => Unit,
                  error:(Exception) => Unit) {
-
     _file.withResource(
         (channel) => withBuffer.apply(channel.map(FileChannel.MapMode.READ_WRITE, position, length)),
         (exception) => error(exception))

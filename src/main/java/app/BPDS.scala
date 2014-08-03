@@ -44,9 +44,11 @@ object BPDS extends App {
 
   result match {
     case x:StartResponse => {
+
       _profileActor ! Write("key1", "value1", "context1")
       _profileActor ! Read("key1", "context1")
       //_profileActor ! Stop(_profileActor)
+
     }
   }
 
