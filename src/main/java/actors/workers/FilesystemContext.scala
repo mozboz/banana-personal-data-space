@@ -30,7 +30,7 @@ class FilesystemContext extends WorkerActor {
     request[ReadConfigResponse](ReadConfig("dataFolder"), message.configRef,
       (response) => {
         _folder = response.value.asInstanceOf[String]
-        KeyMapFilesystemPersistence.load(_folder, indexName)
+        _index = KeyMapFilesystemPersistence.load(_folder, indexName)
         _file.set((key, channel, ex) => {
            val file = new RandomAccessFile(_folder + name, "rw")
           channel(file.getChannel)
