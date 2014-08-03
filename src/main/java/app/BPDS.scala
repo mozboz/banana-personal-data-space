@@ -33,21 +33,29 @@ object BPDS extends App {
   val _configurationActor = system.actorOf(Props[Configuration], "Configuration")
   val _profileActor = system.actorOf(Props[Profile], "Profile")
 
-  _configurationActor ! WriteConfig("profileActor", _profileActor)
+  val f1 =  _configurationActor ? WriteConfig("profileActor", _profileActor)
+  val r1 = Await.result(f1, timeout.duration).asInstanceOf[Response]
 
-  val _httpActor = system.actorOf(Props[HttpActor], "HttpActor")
+  r1 match {
+    case x:WriteConfigResponse => {
 
-  IO(Http) ! Http.Bind(_httpActor, interface = "0.0.0.0", port = 8080)
+      val _httpActor = system.actorOf(Props[HttpActor], "HttpActor")
+      _httpActor ! Start(_configurationActor)
 
-  val future =  _profileActor ? Start(_configurationActor)
-  val result = Await.result(future, timeout.duration).asInstanceOf[Response]
+      IO(Http) ! Http.Bind(_httpActor, interface = "0.0.0.0", port = 8080)
 
-  result match {
-    case x:StartResponse => {
+      val future =  _profileActor ? Start(_configurationActor)
+      val result = Await.result(future, timeout.duration).asInstanceOf[Response]
 
-      _profileActor ! Write("key1", "value1", "context1")
-      _profileActor ! Read("key1", "context1")
-      //_profileActor ! Stop(_profileActor)
+      result match {
+        case x:StartResponse => {
+
+          _profileActor ! Write("key1", "value1", "context1")
+          _profileActor ! Read("key1", "context1")
+          //_profileActor ! Stop(_profileActor)
+
+        }
+      }
 
     }
   }

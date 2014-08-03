@@ -2,7 +2,7 @@ package actors.supervisors
 
 import actors.behaviors.RequestHandler
 import akka.actor.{Actor, ActorRef}
-import requests.{ReadConfigResponse, WriteConfig, ReadConfig}
+import requests.{WriteConfigResponse, ReadConfigResponse, WriteConfig, ReadConfig}
 
 class Configuration extends Actor with RequestHandler {
 
@@ -18,14 +18,19 @@ class Configuration extends Actor with RequestHandler {
   private def handleReadConfig(sender:ActorRef, message:ReadConfig) {
     message.key match {
       case "dataFolder" => sender ! ReadConfigResponse(message, System.getProperty("home"))
-      case "profileActor" => sender ! ReadConfigResponse(message, _profileActor)
+      case "profileActor" => {
+        sender ! ReadConfigResponse(message, _profileActor)
+      }
       case _ => throw new Exception("Unknown config key: " + message.key)
     }
   }
 
   private def handleWriteConfig(sender:ActorRef, message:WriteConfig) {
     message.key match {
-      case "profileActor" => _profileActor = message.value.asInstanceOf
+      case "profileActor" => {
+        _profileActor = message.value.asInstanceOf[ActorRef]
+        sender ! WriteConfigResponse(message)
+      }
     }
   }
 }
