@@ -50,8 +50,11 @@ object BPDS extends App {
       result match {
         case x:StartResponse => {
 
-          _profileActor ! Write("key1", "value1", "context1")
-          _profileActor ! Read("key1", "context1")
+          _profileActor ! Write("Key1", "Value1", "Context1")
+          _profileActor ! Write("Key2", "Value2 - modified", "Context1")
+          _profileActor ! Write("Key3", "Value3", "Context1")
+          _profileActor ! Write("Key4", "Value4", "Context1")
+          _profileActor ! Read("Key1", "Context1")
           //_profileActor ! Stop(_profileActor)
 
         }

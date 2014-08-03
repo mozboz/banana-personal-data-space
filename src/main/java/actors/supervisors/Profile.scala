@@ -1,7 +1,7 @@
 package actors.supervisors
 
 import actors.behaviors._
-import akka.actor.{Props, ActorRef, Actor}
+import akka.actor.{Props, ActorRef}
 import requests._
 import utils.BufferedResource
 

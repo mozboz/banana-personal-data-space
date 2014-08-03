@@ -3,7 +3,7 @@ package actors.workers.models
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 
-class KeyMapFilesystemPersistence {
+object KeyMapFilesystemPersistence {
 
   def load(folder:String, indexName:String) : KeyMapIndex = {
 
@@ -14,9 +14,8 @@ class KeyMapFilesystemPersistence {
 
     try {
       file = new RandomAccessFile(folder + indexName, "r")
-    }catch{
-      case x:Exception =>
-        return index
+    } catch {
+      case x:Exception => return index
     }
 
     val channel = file.getChannel

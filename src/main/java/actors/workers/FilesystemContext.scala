@@ -7,7 +7,7 @@ import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
 import actors.behaviors._
-import actors.workers.models.{KeyMapIndexEntry, KeyMapIndex}
+import actors.workers.models.{KeyMapFilesystemPersistence, KeyMapIndexEntry, KeyMapIndex}
 import akka.actor.ActorRef
 import requests._
 import utils.BufferedResource
@@ -15,20 +15,22 @@ import utils.BufferedResource
 class FilesystemContext extends WorkerActor {
 
   private val _file = new BufferedResource[String, FileChannel]("File")
-  private var _index = new KeyMapIndex(name)
+  private var _index = new KeyMapIndex(indexName)
   private var _folder = ""
 
   def name = context.parent.path.name
+  def indexName = name + ".idx"
 
   def handleRequest = {
-    case x:Read => read(sender(), x)
-    case x:Write => write(sender(), x)
+    case x:Read => handle[Read](sender(), x, read)
+    case x:Write => handle[Write](sender(), x, write)
   }
 
   def start(sender:ActorRef, message:Start, started:() => Unit) {
     request[ReadConfigResponse](ReadConfig("dataFolder"), message.configRef,
       (response) => {
         _folder = response.value.asInstanceOf[String]
+        KeyMapFilesystemPersistence.load(_folder, indexName)
         _file.set((key, channel, ex) => {
            val file = new RandomAccessFile(_folder + name, "rw")
           channel(file.getChannel)
@@ -46,21 +48,21 @@ class FilesystemContext extends WorkerActor {
   private def read(sender:ActorRef, message:Read) {
     readFromDataFile(message.key,
       (data) => sender ! ReadResponse(message, data),
-      (error) => sender ! ErrorResponse(message, error))
+      (ex) => throw ex)
   }
 
   def write(sender:ActorRef, message:Write) {
     appendToDataFile(message.key, message.value,
-      (indexEntry) => try {
+      (indexEntry) => {
         _index.add(indexEntry)
+
+        // @todo: This is bullshit but works for now...
+        KeyMapFilesystemPersistence.save(_index, _folder)
+
         sender ! WriteResponse(message)
-      } catch {
-        case x:Exception => sender ! ErrorResponse(message, x)
       },
       // @todo: There should be two types of write response: 'accepted' and 'written'
-      (exception) => {
-        sender ! ErrorResponse(message, exception)
-      })
+      (ex) => throw ex)
   }
 
   /**
