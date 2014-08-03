@@ -4,7 +4,12 @@ import actors.behaviors._
 import akka.actor.ActorRef
 import requests._
 
+/**
+ * This actor groups actors which represent the metadata of contexts.
+ */
 class MetadataContextGroup extends WorkerActor with Proxy with TContextGroup {
+
+
 
   def handleRequest = {
     case x: Read => handle[Read](sender(), x, read)
@@ -36,6 +41,6 @@ class MetadataContextGroup extends WorkerActor with Proxy with TContextGroup {
   def getActor(contextKey: String,
                spawned: (ActorRef) => Unit,
                error: (Exception) => Unit) {
-
+    // @todo: Find a way to resolve the referenced actor by its key
   }
 }

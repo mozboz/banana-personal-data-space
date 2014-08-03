@@ -36,7 +36,7 @@ class Context extends SupervisorActor with Proxy  {
 
   def start(sender:ActorRef, message:Start, started:() => Unit) {
     _referencedBy.set((key, ref, error) => {
-      ref(context.child(key).get)
+      ref(getActor(key).get)
     })
     _referencesTo.set((key, ref, error) => {
       ref(getActor(key).get)
@@ -56,6 +56,11 @@ class Context extends SupervisorActor with Proxy  {
   }
 
   private def addReferenceTo(sender:ActorRef, message:AddReferenceTo) {
+    _referencesTo.withResource(
+      (actor) => request[AddReferenceToResponse](message, actor,
+        (response) => {}, //@todo: to finish!
+        (ex) => throw ex),
+      (ex) => throw ex)
   }
 
   private def addReferencedBy(sender:ActorRef, message:AddReferencedBy) {
