@@ -1,6 +1,7 @@
 package actors.behaviors
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.SupervisorStrategy.{Resume, Escalate}
+import akka.actor.{OneForOneStrategy, Actor, ActorRef}
 import requests._
 
 import scala.collection.mutable
@@ -31,6 +32,14 @@ trait Supervisor extends Actor with Aggregator
       case _ => throw new Exception("This function is not applicable to objects of type: " + x.getClass)
     }
   }
+
+  override val supervisorStrategy =
+    OneForOneStrategy(3) {
+      // @todo: Add meaningful exception handling
+      case _: ArithmeticException => Resume
+      case t => super.supervisorStrategy.decider.applyOrElse(t, (_: Any) => Escalate)
+    }
+
 
   def getActor(id:String) : Option[ActorRef] = {
     _supervisedActors.get(id)

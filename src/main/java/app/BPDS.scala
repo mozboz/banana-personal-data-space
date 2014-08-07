@@ -30,89 +30,49 @@ object BPDS extends App {
   implicit val system = ActorSystem("ProfileSystem", config)
   implicit val timeout = Timeout(100)
 
+  // Create the configuration actor
   val _configurationActor = system.actorOf(Props[Configuration], "Configuration")
+
+  // Create the profile actor (which is the root of all following actors)
   val _profileActor = system.actorOf(Props[Profile], "Profile")
 
+  // The config actor is abused as a registry at the moment, so send the running root-actor
+  // to the config, so that it can be discovered by other actors who have access to the config.
   val f1 =  _configurationActor ? WriteConfig("profileActor", _profileActor)
   val r1 = Await.result(f1, timeout.duration).asInstanceOf[Response]
 
   r1 match {
+    // When the profile actor was propagated to the configuration ...
     case x:WriteConfigResponse => {
 
-      val _httpActor = system.actorOf(Props[HttpActor], "HttpActor")
-      _httpActor ! Start(_configurationActor)
+      // Create the HTTP-Endpoint for the profile
+      val f2 = _profileActor ? Spawn(Props[HttpActor], "HttpActor")
+      val r2 = Await.result(f2, timeout.duration).asInstanceOf[Response]
 
-      IO(Http) ! Http.Bind(_httpActor, interface = "0.0.0.0", port = 8080)
+      r2 match {
+        // When the HTTP-endpoint was created successfully, bind it to a ip and port.
+        case x:SpawnResponse => IO(Http) ! Http.Bind(x.actorRef, interface = "0.0.0.0", port = 8080)
+      }
 
-      val future =  _profileActor ? Start(_configurationActor)
-      val result = Await.result(future, timeout.duration).asInstanceOf[Response]
+      // Start the profile system
+      val f3 =  _profileActor ? Start(_configurationActor)
+      val r3 = Await.result(f3, timeout.duration).asInstanceOf[Response]
 
-      result match {
+      r3 match {
+        // If a StartResponse arrives, the profile was started successfully and can be used
         case x:StartResponse => {
 
           _profileActor ! Write("Key1", "Value1", "Context1")
           _profileActor ! Write("Key2", "Value2 - modified", "Context1")
           _profileActor ! Write("Key3", "Value3", "Context1")
           _profileActor ! Write("Key4", "Value4", "Context1")
+          _profileActor ! Write("Key1", "Value1", "Context2")
           _profileActor ! Read("Key1", "Context1")
-          //_profileActor ! Stop(_profileActor)
 
+          // Stops the profile system (flush all caches etc..)
+          //_profileActor ! Stop(_profileActor)
         }
       }
-
     }
   }
-
-
-
-
-  /*
-  val _configurationActor = system.actorOf(Props[ConfigurationActor], "ConfigurationActor")
-  val _profileActor = system.actorOf(Props[ProfileActor], "ProfileActor")
-
-  // Just for testing:
-  // Spawn and immediately kill an actor
-  val resp = _profileActor ? Spawn(Props[TestSupervisor])
-  Await.result(resp, timeout.duration).asInstanceOf[Response] match {
-    case x:SpawnResponse => _profileActor ! Kill(List(x.actorRef))
-    case x:ErrorResponse => throw x.ex
-  }
-
-  val _httpActor = system.actorOf(Props[HttpActor], "HttpActor")
-
-  _profileActor ! Start(_configurationActor)
-
-  val _contextGroupOwner = system.actorOf(Props[ContextGroupOwnerActor], "ContextGroupOwner")
-  //_contextGroupOwner ! ConnectProfile(_profileActor)
-  _contextGroupOwner ! Start(_configurationActor)
-
-  val _contextGroupAccessor = system.actorOf(Props[ContextGroupAccessorActor], "ContextGroupAccessor")
-  _contextGroupOwner ! ManageContexts(List("Context1", "Context2", "Context3"))
-
-  //_contextGroupAccessor ! ConnectContextGroupOwner(_contextGroupOwner)
-  _contextGroupAccessor ! Start(_configurationActor)
-
-  _contextGroupAccessor ! Write("Key1", "Value1", "Context1")
-  _contextGroupAccessor ! Write("Key2", "Value2", "Context1")
-
-  _contextGroupAccessor ! Write("Key1", "Value1", "Context2")
-  var string = "a"
-  for(i <- 1 to 12)
-    string = string + string
-
-  _contextGroupAccessor ! Write("Key2", string, "Context2")
-
-  _contextGroupAccessor ! Read("Key2", "Context2")
-
-  val future =  _contextGroupAccessor ? Read("Key2", "Context2")
-  val result = Await.result(future, timeout.duration).asInstanceOf[ReadResponse]
-
-
-  IO(Http) ! Http.Bind(_httpActor, interface = "0.0.0.0", port = 8080)
-
-  _httpActor ! SetProfileAccessor(_contextGroupAccessor)
-
-  // @todo: This is important because it persists the index. Maybe the index should be flushed automatically...
-  //_contextGroupOwner ! Shutdown()
-  */
 }

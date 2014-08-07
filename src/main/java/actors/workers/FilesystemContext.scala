@@ -18,6 +18,8 @@ class FilesystemContext extends WorkerActor {
   private var _index = new KeyMapIndex(indexName)
   private var _folder = ""
 
+  // @todo: Don't use the actor path here, since it can not contain some characters which would be valid in a context name
+  // @todo: Also don't use this as the filename
   def name = context.parent.path.name
   def indexName = name + ".idx"
 
@@ -35,9 +37,9 @@ class FilesystemContext extends WorkerActor {
            val file = new RandomAccessFile(_folder + name, "rw")
           channel(file.getChannel)
         })
+        started()
       },
       (ex) => throw ex)
-    started()
   }
 
   def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
