@@ -1,7 +1,5 @@
 package utils
 
-import actors.behaviors.Request
-import scala.util.matching.Regex
 import requests.Read
 
 object RequestStringParser {
@@ -13,10 +11,7 @@ object RequestStringParser {
     requestString match {
       case keyAndContext(key, context) => Read(key, context)
       case keyOnly(context) => Read(null, context)
-
       case _ => throw new IllegalArgumentException("Poorly formatted Request String")
     }
-
-
   }
 }

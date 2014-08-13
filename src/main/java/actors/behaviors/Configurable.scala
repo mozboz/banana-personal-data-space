@@ -47,7 +47,7 @@ trait Configurable extends Actor with Aggregator
 
   /**
    * Sets the ref to the config actor which should be consulted.
-   * @param configActor
+   * @param configActor The reference to the config actor
    */
   def setConfig(configActor:ActorRef) {
     _configActor.reset(None)

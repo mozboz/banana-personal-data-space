@@ -1,5 +1,7 @@
 package requests
 
+import java.nio.ByteBuffer
+
 import actors.behaviors.{Response, Request}
 
 /**
@@ -9,3 +11,9 @@ import actors.behaviors.{Response, Request}
  */
 case class Read(key:String, fromContext:String) extends Request
 case class ReadResponse(request:Request, data:String)  extends Response(request.messageId)// @todo: Change this back to messageId only to prevent sending the whole request with every answer
+
+case class ReadFile(offset:Long, length:Long) extends Request
+case class ReadFileResponse(request:Request, data:ByteBuffer) extends Response(request.messageId)
+
+case class WriteFile(offset:Long, data:ByteBuffer) extends Request
+case class WriteFileResponse(request:Request) extends Response(request.messageId)

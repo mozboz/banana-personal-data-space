@@ -2,11 +2,8 @@ package actors.behaviors
 
 import java.util.UUID
 
-import akka.actor.{ActorRef, Actor}
+import akka.actor.Actor
 import akka.event.LoggingReceive
-import requests._
-import utils.BufferedResource
-import scala.collection.mutable
 
 /**
  * Provides convenient access to the configuration system and handles the startup and shutdown procedure.

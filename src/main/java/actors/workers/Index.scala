@@ -13,6 +13,8 @@ class Index extends WorkerActor {
 
   private var _folder = ""
   private val _file = new BufferedResource[String, FileChannel]("File")
+
+  // @todo: Do not use this name here. Choose a separate name for both Index and Context file.
   def name = context.parent.path.name
 
   def handleRequest = {

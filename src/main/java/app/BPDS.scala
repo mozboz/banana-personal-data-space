@@ -1,9 +1,9 @@
 package app
 
 
-import actors.behaviors.Response
+import actors.behaviors.{Request, Response}
 import actors.supervisors._
-import akka.actor.{Props, ActorSystem}
+import akka.actor.{ActorRef, Props, ActorSystem}
 import com.typesafe.config.{Config, ConfigFactory}
 import requests._
 import concurrent.Await
@@ -17,7 +17,7 @@ import akka.io.IO
 object BPDS extends App {
 
 
-  val config: Config = ConfigFactory.parseString("""akka {
+ /* val config: Config = ConfigFactory.parseString("""akka {
          loglevel = "DEBUG"
          actor {
            debug {
@@ -26,8 +26,8 @@ object BPDS extends App {
            }
          }
        }""").withFallback(ConfigFactory.load())
-
-  implicit val system = ActorSystem("ProfileSystem", config)
+*/
+  implicit val system = ActorSystem("ProfileSystem"/*, config*/)
   implicit val timeout = Timeout(100)
 
   // Create the configuration actor

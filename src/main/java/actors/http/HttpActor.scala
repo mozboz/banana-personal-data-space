@@ -3,6 +3,7 @@ package actors.http
 import akka.util.Timeout
 import akka.actor._
 import spray.can.Http
+import spray.http.HttpHeaders.{`Access-Control-Allow-Origin`, `Content-Type`}
 import spray.http._
 import HttpMethods._
 import MediaTypes._
@@ -35,13 +36,13 @@ class HttpActor extends WorkerActor {
 
     case HttpRequest(GET, Uri.Path(path), _, _, _) =>
       val s = sender()
-
       val req = Read(path.stripPrefix("/"), "Context1")
 
       aggregateOne(req, _profile, (response, sender) => {
         response match {
-        case x:ReadResponse => s ! HttpResponse(entity = HttpEntity(`text/html`, x.data))
-        case x:ErrorResponse => s ! ErrorResponse(req, x.ex)
+        case x:ReadResponse => s ! HttpResponse(entity = HttpEntity(`text/html`, x.data),
+          headers = List(`Access-Control-Allow-Origin`(AllOrigins)))
+        case x:ErrorResponse => s ! HttpResponse(status = 500, entity = x.ex.getMessage)
       }})
       /*
     case HttpRequest(GET, Uri.Path("/crash"), _, _, _) =>
