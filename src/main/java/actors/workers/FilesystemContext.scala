@@ -29,17 +29,17 @@ class FilesystemContext extends WorkerActor {
   }
 
   def start(sender:ActorRef, message:Start, started:() => Unit) {
-    request[ReadConfigResponse](ReadConfig("dataFolder"), message.configRef,
-      (response) => {
-        _folder = response.value.asInstanceOf[String]
+    readConfig("dataFolder",
+      value=> {
+        _folder = value.asInstanceOf[String]
         _index = KeyMapFilesystemPersistence.load(_folder, indexName)
         _file.set((key, channel, ex) => {
-           val file = new RandomAccessFile(_folder + name, "rw")
+          val file = new RandomAccessFile(_folder + name, "rw")
           channel(file.getChannel)
         })
         started()
       },
-      (ex) => throw ex)
+      exception => throw exception)
   }
 
   def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
@@ -65,23 +65,6 @@ class FilesystemContext extends WorkerActor {
       },
       // @todo: There should be two types of write response: 'accepted' and 'written'
       (ex) => throw ex)
-  }
-
-  /**
-   * Uses the actor's _file to create a MappedByteBuffer which is then
-   * supplied to the withBuffer-continuation.
-   * @param position The position in the file
-   * @param length The length of the buffer
-   * @param withBuffer The success continuation
-   * @param error The error continuation
-   */
-  private def withBuffer(position:Int,
-                 length:Int,
-                 withBuffer:(MappedByteBuffer) => Unit,
-                 error:(Exception) => Unit) {
-    _file.withResource(
-        (channel) => withBuffer.apply(channel.map(FileChannel.MapMode.READ_WRITE, position, length)),
-        (exception) => error(exception))
   }
 
   /**
@@ -113,7 +96,7 @@ class FilesystemContext extends WorkerActor {
     if (_index.getBlockSize != 1)
       // @todo: Find a way to avoid array copy (ByteBuffer?)
       bytes.copyToArray(paddedBytes)
-
+/*
     withBuffer(targetAddress, paddedBytes.length,
       (buffer) => {
         if (_index.getBlockSize != 1) // @todo: Is there something for what I would need the blocks? throw it out?!
@@ -125,7 +108,7 @@ class FilesystemContext extends WorkerActor {
       },
       // @todo: Provide simple mechanism to wrap the exception with some information about the current method
       (exception) => error(exception)
-    )
+    )*/
   }
 
   /**
@@ -135,7 +118,7 @@ class FilesystemContext extends WorkerActor {
    */
   private def readFromDataFile (key:String, withData:(String) => Unit, error:(Exception) => Unit) {
     val range = _index.getRangeBytes(key)
-
+/*
     withBuffer(range._1, range._2,
       (buffer) => {
         val paddedData = new Array[Byte](range._2)
@@ -159,6 +142,6 @@ class FilesystemContext extends WorkerActor {
         withData(new String(data, "UTF-8"))
       },
       (exception) => error(exception)
-    )
+    )*/
   }
 }

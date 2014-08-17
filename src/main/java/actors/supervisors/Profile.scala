@@ -30,7 +30,7 @@ class Profile extends SupervisorActor with Proxy {
 
   def start(sender:ActorRef, message:Start, started:() => Unit) {
 
-    val join = joiner(2, started)
+    val join = joinN(2, started)
 
     request[SpawnResponse](Spawn(Props[ContextGroup], "localContexts"), self,
       (response) => {
@@ -53,7 +53,7 @@ class Profile extends SupervisorActor with Proxy {
 
   def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {
 
-    val join = joiner(2, stopped)
+    val join = joinN(2, stopped)
 
     _localContexts.withResource((actor) => {
       request[KillResponse](Kill("localContexts"), self, (r) => join(), (ex) => throw ex)

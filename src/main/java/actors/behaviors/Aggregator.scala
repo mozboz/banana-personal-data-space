@@ -16,7 +16,7 @@ trait Aggregator extends Actor with Requester{
    * @param joined The continuation which is called when all branches were joined
    * @return The join counter function
    */
-  def joiner(times:Int, joined:() => Unit) : () => Unit = {
+  def joinN(times:Int, joined:() => Unit) : () => Unit = {
     var remaining = times
     () => {
       remaining = remaining - 1

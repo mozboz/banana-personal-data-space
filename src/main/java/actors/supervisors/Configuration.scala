@@ -13,7 +13,7 @@ class Configuration extends Actor with RequestHandler {
   def handleRequest = {
     case x:ReadConfig => handle[ReadConfig](sender(), x, handleReadConfig)
     case x:WriteConfig => handle[WriteConfig](sender(), x, handleWriteConfig)
-    case x:ReadActorConfig => handle[ReadActorConfig](sender(), x, handleReadActorConfig)
+    // case x:ReadActorConfig => handle[ReadActorConfig](sender(), x, handleReadActorConfig)
     case x:WriteActorConfig => handle[WriteActorConfig](sender(), x, handleWriteActorConfig)
   }
 
@@ -33,12 +33,14 @@ class Configuration extends Actor with RequestHandler {
     }
   }
 
+  /*
   private def handleReadActorConfig(sender:ActorRef, message:ReadActorConfig) {
     message.key match {
       case "file" =>
       case _ => throw new Exception("Unknown config key: " + message.key)
     }
   }
+*/
 
   private def handleWriteActorConfig(sender:ActorRef, message:WriteActorConfig) {
     message.key match {

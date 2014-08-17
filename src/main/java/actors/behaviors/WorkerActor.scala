@@ -10,10 +10,6 @@ import akka.event.LoggingReceive
  */
 abstract class WorkerActor extends Actor
                            with Configurable {
-
-  private val _actorId = UUID.randomUUID()
-  def actorId = _actorId
-
   /**
    * Implements the actors receive-function and routes the incoming messages
    * either to handleSystemEvents, handleResponse or handleRequest.

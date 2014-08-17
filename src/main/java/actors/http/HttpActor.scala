@@ -18,12 +18,12 @@ class HttpActor extends WorkerActor {
   var _profile: ActorRef = _
 
   def start(sender:ActorRef, message:Start, started:() => Unit) {
-    request[ReadConfigResponse](ReadConfig("profileActor"), message.configRef,
-      (response) => {
-        _profile = response.value.asInstanceOf[ActorRef]
-        started()
-      },
-      (ex) => throw ex)
+    readConfig("profileActor",
+    value => {
+      _profile = value.asInstanceOf[ActorRef]
+      started()
+    },
+    exception => throw exception)
   }
 
   def stop(sender:ActorRef, message:Stop, stopped:() => Unit) {

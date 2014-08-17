@@ -24,16 +24,16 @@ class Index extends WorkerActor {
   }
 
   def start(sender: ActorRef, message: Start, started: () => Unit) {
-    request[ReadConfigResponse](ReadConfig("dataFolder"), message.configRef,
-      (response) => {
-        _folder = response.value.asInstanceOf[String]
+    readConfig("dataFolder",
+      value => {
+        _folder = value.asInstanceOf[String]
         _file.set((key, channel, ex) => {
           val file = new RandomAccessFile(_folder + name + ".idx", "rw")
           channel(file.getChannel)
         })
         started()
       },
-      (ex) => throw ex)
+      exception => throw exception)
   }
 
   def stop(sender: ActorRef, message: Stop, stopped: () => Unit) {

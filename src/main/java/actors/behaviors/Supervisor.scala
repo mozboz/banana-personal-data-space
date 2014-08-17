@@ -49,6 +49,10 @@ trait Supervisor extends Actor with Aggregator
     val actorRef = context.actorOf(message.props, message.id)
     _supervisedActors.put(message.id, actorRef)
 
+    if (message.settings.isDefined) {
+
+    }
+
     sender ! SpawnResponse(message, actorRef)
   }
 

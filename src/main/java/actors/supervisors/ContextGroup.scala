@@ -45,7 +45,7 @@ class ContextGroup extends SupervisorActor with Proxy with TContextGroup {
   }
 
   /**
-   * Spawns a Context and starts it.
+   * Spawns a Context and starts it. This method is required by the TContextGroup trait.
    * @param contextKey The key of the context
    * @param spawned The spawned-continuation
    * @param error The error-continuation
@@ -73,7 +73,7 @@ class ContextGroup extends SupervisorActor with Proxy with TContextGroup {
     request[SpawnResponse](Spawn(Props[Context], contextKey), self,
       (response) => {
 
-        val join = joiner(4, () => spawned(response.actorRef))
+        val join = joinN(4, () => spawned(response.actorRef))
 
         spawn[FilesystemContext](response.actorRef, "data",
           (a) => join(),

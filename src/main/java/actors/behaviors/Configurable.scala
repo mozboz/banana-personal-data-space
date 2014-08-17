@@ -1,14 +1,17 @@
 package actors.behaviors
 
+import java.util.UUID
+
 import akka.actor.{Actor, ActorRef}
 import requests._
 import utils.BufferedResource
 
 /**
- * Makes an actor configurable.
+ * Makes an actor start-, stop- and configurable
  */
 trait Configurable extends Actor with Aggregator
-                                 with RequestHandler {
+                                 with RequestHandler
+                                 with ActorId {
 
   private val _configActor = new BufferedResource[String, ActorRef]("Config")
 
@@ -26,6 +29,10 @@ trait Configurable extends Actor with Aggregator
   }
 
   def handleStart(sender:ActorRef, message:Start) {
+    _configActor.set((key,configActor,error) => {
+      configActor(message.configRef)
+    })
+
     start(sender, message,
       () => sender ! StartResponse(message))
   }
@@ -64,7 +71,7 @@ trait Configurable extends Actor with Aggregator
    */
   def readConfig(key:String, value:Any => Unit, error:Exception => Unit) {
     _configActor.withResource(
-      (actor) => aggregateOne(ReadConfig(key), actor, (response,sender) => {
+      (actor) => aggregateOne(ReadConfig(actorId, key), actor, (response,sender) => {
         value(response.asInstanceOf[ReadConfigResponse].value)
       }),
       (exception) => throw exception)
