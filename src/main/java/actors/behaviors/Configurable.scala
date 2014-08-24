@@ -1,7 +1,5 @@
 package actors.behaviors
 
-import java.util.UUID
-
 import akka.actor.{Actor, ActorRef}
 import requests._
 import utils.BufferedResource

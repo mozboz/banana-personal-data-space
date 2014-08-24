@@ -8,6 +8,9 @@ import akka.actor.ActorRef
 import requests._
 import utils.BufferedResource
 
+/**
+ * Manages the access to a file.
+ */
 trait FileWorker extends WorkerActor {
 
   private val _file = new BufferedResource[String, FileChannel]("File")
@@ -52,9 +55,9 @@ trait FileWorker extends WorkerActor {
     })
   }
 
-  private def withBuffer(message: FileMessage,
-                         withBuffer:(MappedByteBuffer) => Unit,
-                         error:(Exception) => Unit) {
+  private def bufferFromMessage(message: FileMessage,
+                                withBuffer:(MappedByteBuffer) => Unit,
+                                error:(Exception) => Unit) {
     _file.withResource(
       (channel) => withBuffer(
         channel.map(FileChannel.MapMode.READ_WRITE, message.getOffset, message.getLength)
@@ -63,7 +66,7 @@ trait FileWorker extends WorkerActor {
   }
 
   private def handleReadFile(sender: ActorRef, message: ReadFile) {
-    withBuffer(message, buffer => {
+    bufferFromMessage(message, buffer => {
         buffer.load()
         sender ! ReadFileResponse(message, buffer)
       },
@@ -71,7 +74,7 @@ trait FileWorker extends WorkerActor {
   }
 
   private def handleWriteFile(sender: ActorRef, message: WriteFile) {
-    withBuffer(message, buffer => {
+    bufferFromMessage(message, buffer => {
       message.data.rewind()
       buffer.put(message.data)
       sender ! WriteFileResponse(message)

@@ -1,7 +1,7 @@
 import org.scalatest._
 import utils.RequestStringParser
 
-class RequestStringParser extends FlatSpec with Matchers {
+class RequestStringParserTest extends FlatSpec with Matchers {
 
     "a request string" should "parse into correct components" in {
 
